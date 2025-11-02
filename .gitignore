@@ -1,0 +1,5 @@
+# Node.js / npm
+node_modules/
+
+# Rollup cache
+.rollup.cache/
