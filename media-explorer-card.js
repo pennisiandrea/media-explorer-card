@@ -25,35 +25,67 @@ const t=globalThis,i$1=t.trustedTypes,s$1=i$1?i$1.createPolicy("lit-html",{creat
  */const s=globalThis;class i extends y$1{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0;}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const r=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=B(r,this.renderRoot,this.renderOptions);}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(true);}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(false);}render(){return T}}i._$litElement$=true,i["finalized"]=true,s.litElementHydrateSupport?.({LitElement:i});const o=s.litElementPolyfillSupport;o?.({LitElement:i});(s.litElementVersions??=[]).push("4.2.1");
 
 function isDirectory(item) {
-    return item.media_class == "directory";
+    return item?.media_class === "directory";
+}
+function isImage(item) {
+    return item?.media_class === "image";
+}
+function isVideo(item) {
+    return item?.media_class === "video";
+}
+function isAudio(item) {
+    return item?.media_class === "audio";
 }
 
-x`
+const folderIcon = x`
   <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-  </svg>
-`;
+  </svg>`;
 const fileIcon = x`
   <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-  </svg>
-`;
-x`
+  </svg>`;
+const imageIcon = x`
   <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
       d="M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" />
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
       d="M8 11l2.5 3 3.5-4.5L18 17H6z" />
     <circle cx="9" cy="7" r="1.5" stroke-width="2" />
-  </svg>
-`;
-x`
+  </svg>`;
+const videoIcon = x`
   <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
       d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
     <rect x="3" y="7" width="12" height="10" rx="2" ry="2" stroke-width="2" />
-  </svg>
-`;
+  </svg>`;
+const backIcon = x`
+  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path d="M20 12H8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M12 6L6 12L12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+const zoomIcon = x`
+  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" >
+    <path d="M4 9V4h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M20 9V4h-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M4 15v5h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M20 15v5h-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+const nextIcon = x`
+  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path d="M7 4l7 8-7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M14 4l7 8-7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+const prevIcon = x`
+  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path d="M17 4l-7 8 7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M10 4l-7 8 7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+const closeIcon = x`
+  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <line x1="18" y1="6" x2="6" y2="18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="6" y1="6" x2="18" y2="18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
 
 /**
  * @param {import('./card.js').MediaExplorerCard} card
@@ -64,13 +96,13 @@ const renderTemplate = (card) => x`
       
       <div id="mec-header">
         <div id="mec-header-browser-buttons" ?hidden="${card._playerOn}">
-          <button class="mec-button" ?disabled="${card._pathList.length <= 1}" @click="${() => card.navigateBackward()}">Back</button>
+          <button class="mec-button" ?disabled="${card._pathList.length <= 1}" @click="${() => card.navigateBackward()}">${backIcon}</button>
         </div>
         <div id="mec-header-player-buttons" ?hidden="${!card._playerOn}">
-          <button class="mec-button" @click="${() => card.closeFile()}">Back</button>
-          <button class="mec-button" @click=${() => card.toggleFullscreenPlayer()}>Zoom</button>
-          <button class="mec-button" ?disabled="${card._openedFileIndex <= 0}" @click=${() => card.openFile(card._itemList[card._openedFileIndex-1],card._openedFileIndex-1)}>Prev</button>
-          <button class="mec-button" ?disabled="${card._openedFileIndex >= card._itemList?.length-1}" @click=${() => card.openFile(card._itemList[card._openedFileIndex+1],card._openedFileIndex+1)}>Next</button>
+          <button class="mec-button" @click="${() => card.closeFile()}">${closeIcon}</button>
+          <button class="mec-button" @click=${() => card.toggleFullscreenPlayer()}>${zoomIcon}</button>
+          <button class="mec-button" ?disabled="${card._openedFileIndex <= 0}" @click=${() => card.openFile(card._itemList[card._openedFileIndex-1],card._openedFileIndex-1)}>${prevIcon}</button>
+          <button class="mec-button" ?disabled="${card._openedFileIndex >= card._itemList?.length-1}" @click=${() => card.openFile(card._itemList[card._openedFileIndex+1],card._openedFileIndex+1)}>${nextIcon}</button>
         </div>
 
         <div id="mec-header-title" ?hidden="${!card._title}"> ${card._title} </div>
@@ -89,7 +121,7 @@ const renderTemplate = (card) => x`
           ${card._fileLoading ? 
             x`<div class="loading">Loading...</div>` :
             card._openedFileUrl && !card._playerFullScreenOn
-            ? getPlayer(card._openedFile?.media_content_type,card._openedFileUrl)
+            ? getPlayer(card._openedFile,card._openedFileUrl)
             : x`<div>I'm confused</div>`}
         </div>
 
@@ -101,8 +133,8 @@ const renderTemplate = (card) => x`
     ? x`
         <div id="fullscreen-player">
           <div class="fullscreen-overlay">
-            ${getPlayer(card._openedFile?.media_content_type,card._openedFileUrl)}
-            <button class="fullscreen-close" @click="${() => card.toggleFullscreenPlayer()}">❌</button>
+            ${getPlayer(card._openedFile,card._openedFileUrl)}
+            <button class="fullscreen-close" @click="${() => card.toggleFullscreenPlayer()}">${closeIcon}</button>
           </div>
         </div>
     ` : null}
@@ -114,21 +146,22 @@ const renderTemplate = (card) => x`
 const getItemList = (card) => x`
     ${card._itemList.map((item, index) => x`
       <div class="mec-browser-content-item" @click="${() => {card.openItem(item, index);}}">
-        <div class="mec-browser-content-item-icon">${fileIcon}</div>
-        <div class="mec-browser-content-item-name">${item?.title}</div>
+        <div class="mec-browser-content-item-icon">
+          ${isDirectory(item) ? folderIcon 
+            : isImage(item) ? imageIcon 
+            : isVideo(item) ? videoIcon 
+            : fileIcon }
+        </div>
+        <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
       </div>`
     )}
   `;
 
-
-const getPlayer = (type, url) => x`
-    ${type?.startsWith("image")
-      ? x`<img src="${url}" alt="preview" />`
-      : type?.startsWith("video")
-      ? x`<video src="${url}" controls autoplay></video>`
-      : type?.startsWith("audio")
-      ? x`<audio src="${url}" controls autoplay></audio>`
-      : x`<a href="${url}" target="_blank">I'm confused</a>`}
+const getPlayer = (item, url) => x`
+    ${isImage(item) ? x`<img src="${url}" alt="preview" />`
+      : isVideo(item) ? x`<video src="${url}" controls autoplay></video>`
+      : isAudio(item) ? x`<audio src="${url}" controls autoplay></audio>`
+      : x`<a href="${url}" target="_blank">File not supported</a>`}
   `;
 
 const cardStyle = i$3`
@@ -176,12 +209,12 @@ const cardStyle = i$3`
   }
 
   .mec-button {
-    padding: 0.7rem;
+    padding: 0.5rem;
     cursor: pointer;
     background: none;
     border: 1px solid var(--secondary-text-color, #ccc);
     color: var(--primary-text-color);
-    border-radius: 5px;
+    border-radius: 50%;
     transition: background 0.2s;
   }
   .mec-button[disabled] {
@@ -189,6 +222,11 @@ const cardStyle = i$3`
     border: 1px solid var(--disabled-text-color, #ccc);
     cursor: not-allowed;
     opacity: 0.6;
+  }
+  .mec-button-icon {
+    width: var(--mdc-icon-size, 24px);
+    height: var(--mdc-icon-size, 24px);
+    display: block;
   }
 
   #mec-header-title {
@@ -328,7 +366,7 @@ const cardStyle = i$3`
   .fullscreen-overlay {
     width: 100%;
     height: 100%;
-    background: var(--card-background-color)
+    background: var(--card-background-color);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -348,14 +386,14 @@ const cardStyle = i$3`
   .fullscreen-close {
     position: absolute;
     top: 20px;
-    right: 30px;
-    color: white;
-    background: transparent;
-    border: none;
+    right: 30px;    
+    padding: 0.5rem;
     cursor: pointer;
+    background: none;
+    border: 1px solid var(--secondary-text-color, #ccc);
+    color: var(--primary-text-color);
+    border-radius: 50%;
   }
-
-  
 `;
 
 class MediaExplorerCard extends i {
@@ -456,6 +494,7 @@ class MediaExplorerCard extends i {
   
   toggleFullscreenPlayer() {
     this._playerFullScreenOn = !this._playerFullScreenOn;
+    this.requestUpdate();
   }
 }
 

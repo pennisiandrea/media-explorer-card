@@ -102,6 +102,7 @@ class MediaExplorerCard extends LitElement {
   
   toggleFullscreenPlayer() {
     this._playerFullScreenOn = !this._playerFullScreenOn;
+    this.requestUpdate();
   }
 }
 

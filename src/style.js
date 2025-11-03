@@ -45,12 +45,12 @@ export const cardStyle = css`
   }
 
   .mec-button {
-    padding: 0.7rem;
+    padding: 0.5rem;
     cursor: pointer;
     background: none;
     border: 1px solid var(--secondary-text-color, #ccc);
     color: var(--primary-text-color);
-    border-radius: 5px;
+    border-radius: 50%;
     transition: background 0.2s;
   }
   .mec-button[disabled] {
@@ -58,6 +58,11 @@ export const cardStyle = css`
     border: 1px solid var(--disabled-text-color, #ccc);
     cursor: not-allowed;
     opacity: 0.6;
+  }
+  .mec-button-icon {
+    width: var(--mdc-icon-size, 24px);
+    height: var(--mdc-icon-size, 24px);
+    display: block;
   }
 
   #mec-header-title {
@@ -197,7 +202,7 @@ export const cardStyle = css`
   .fullscreen-overlay {
     width: 100%;
     height: 100%;
-    background: var(--card-background-color)
+    background: var(--card-background-color);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -217,10 +222,12 @@ export const cardStyle = css`
   .fullscreen-close {
     position: absolute;
     top: 20px;
-    right: 30px;
-    color: white;
-    background: transparent;
-    border: none;
+    right: 30px;    
+    padding: 0.5rem;
     cursor: pointer;
+    background: none;
+    border: 1px solid var(--secondary-text-color, #ccc);
+    color: var(--primary-text-color);
+    border-radius: 50%;
   }
 `;
