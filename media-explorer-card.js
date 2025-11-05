@@ -27,15 +27,6 @@ const t=globalThis,i$1=t.trustedTypes,s$1=i$1?i$1.createPolicy("lit-html",{creat
 function isDirectory(item) {
     return item?.media_class === "directory";
 }
-function isImage(item) {
-    return item?.media_class === "image";
-}
-function isVideo(item) {
-    return item?.media_class === "video";
-}
-function isAudio(item) {
-    return item?.media_class === "audio";
-}
 
 const folderIcon = x`
   <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,12 +62,12 @@ const zoomIcon = x`
     <path d="M4 15v5h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M20 15v5h-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
-const nextIcon = x`
+x`
   <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path d="M7 4l7 8-7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M14 4l7 8-7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
-const prevIcon = x`
+x`
   <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path d="M17 4l-7 8 7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M10 4l-7 8 7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -87,6 +78,7 @@ const closeIcon = x`
     <line x1="6" y1="6" x2="18" y2="18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 
+
 /**
  * @param {import('./card.js').MediaExplorerCard} card
 */
@@ -96,32 +88,30 @@ const renderTemplate = (card) => x`
       
       <div id="mec-header">
         <div id="mec-header-browser-buttons" ?hidden="${card._playerOn}">
-          <button class="mec-button" ?disabled="${card._pathList.length <= 1}" @click="${() => card.navigateBackward()}">${backIcon}</button>
+          <button class="mec-button" ?disabled="${card.currentItem.getParent() == null}" @click="${() => card.navigateBackward()}">${backIcon}</button>
         </div>
         <div id="mec-header-player-buttons" ?hidden="${!card._playerOn}">
           <button class="mec-button" @click="${() => card.closeFile()}">${closeIcon}</button>
           <button class="mec-button" @click=${() => card.toggleFullscreenPlayer()}>${zoomIcon}</button>
-          <button class="mec-button" ?disabled="${card._openedFileIndex <= 0}" @click=${() => card.openFile(card._itemList[card._openedFileIndex-1],card._openedFileIndex-1)}>${prevIcon}</button>
-          <button class="mec-button" ?disabled="${card._openedFileIndex >= card._itemList?.length-1}" @click=${() => card.openFile(card._itemList[card._openedFileIndex+1],card._openedFileIndex+1)}>${nextIcon}</button>
         </div>
 
         <div id="mec-header-title" ?hidden="${!card._title}"> ${card._title} </div>
         
-        <div class="mec-header-txt-info" ?hidden="${card._playerOn || card._pathList.length <= 1}">${card._pathList.at(-1).replace(card._pathList[0],".")}</div>
-        <div class="mec-header-txt-info" ?hidden="${!card._playerOn}">${card._openedFile?.title}</div>
+        <div class="mec-header-txt-info" ?hidden="${card._playerOn || card.currentItem.getParent() == null}">${card.currentItem.getTitle()}</div>
+        <div class="mec-header-txt-info" ?hidden="${!card._playerOn}">${card.currentItem.getTitle()}</div>
       </div>
       
       <div id="mec-content">       
 
         <div id="mec-browser-content" ?hidden="${card._playerOn}">
-          ${card._navigationLoading ? x`<div class="loading">Loading...</div>` : card._itemList.length ? getItemList(card) : x`<div class="p-4">No files found.</div>`}
+          ${card.currentItem.getSubItems().length > 0 ? getItemList(card) : card._navigationLoading ? x`<div class="loading">Loading...</div>` : x`<div class="p-4">No files found.</div>`}
         </div>
 
         <div id="mec-player-content" ?hidden="${!card._playerOn}">
           ${card._fileLoading ? 
             x`<div class="loading">Loading...</div>` :
             card._openedFileUrl && !card._playerFullScreenOn
-            ? getPlayer(card._openedFile,card._openedFileUrl)
+            ? getPlayer(card.currentItem)
             : x`<div>I'm confused</div>`}
         </div>
 
@@ -144,25 +134,34 @@ const renderTemplate = (card) => x`
  * @param {import('./card.js').MediaExplorerCard} card
 */
 const getItemList = (card) => x`
-    ${card._itemList.map((item, index) => x`
-      <div class="mec-browser-content-item" @click="${() => {card.openItem(item, index);}}">
+    ${card.currentItem.getSubItems().map((item) => x`
+      <div class="mec-browser-content-item" @click="${() => {card.openItem(item);}}">
         <div class="mec-browser-content-item-icon">
-          ${isDirectory(item) ? folderIcon 
-            : isImage(item) ? imageIcon 
-            : isVideo(item) ? videoIcon 
+          ${item.isDirectory() ? folderIcon 
+            : item.isImage() ? imageIcon 
+            : item.isVideo() ? videoIcon 
             : fileIcon }
         </div>
-        <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
+        <div class="mec-browser-content-item-name">${item.getTitle() ?? "NA"}</div>
       </div>`
     )}
   `;
 
-const getPlayer = (item, url) => x`
-    ${isImage(item) ? x`<img src="${url}" alt="preview" />`
-      : isVideo(item) ? x`<video src="${url}" controls autoplay></video>`
-      : isAudio(item) ? x`<audio src="${url}" controls autoplay></audio>`
-      : x`<a href="${url}" target="_blank">File not supported</a>`}
+const getPlayer = (item) => x`
+    ${item.isImage() ? x`<img src="${item.getURL()}" alt="preview" />`
+      : item.isVideo() ? x`<video src="${item.getURL()}" controls autoplay></video>`
+      : item.isAudio() ? x`<audio src="${item.getURL()}" controls autoplay></audio>`
+      : x`<a href="${item.getURL()}" target="_blank">File not supported</a>`}
   `;
+
+
+
+
+  /*
+
+<button class="mec-button" ?disabled="${card._openedFileIndex <= 0}" @click=${() => card.openFile(card._itemList[card._openedFileIndex-1],card._openedFileIndex-1)}>${prevIcon}</button>
+<button class="mec-button" ?disabled="${card._openedFileIndex >= card._itemList?.length-1}" @click=${() => card.openFile(card._itemList[card._openedFileIndex+1],card._openedFileIndex+1)}>${nextIcon}</button>
+*/
 
 const cardStyle = i$3`
   :host {
@@ -396,7 +395,84 @@ const cardStyle = i$3`
   }
 `;
 
+/*
+title
+media_class
+media_content_id
+url
+*/
+class NavigationItem {
+  /* private properties */
+  #title = "";
+  #media_class = "";
+  #media_content_id = "";
+  #url = "";
+  #sub_items = [];
+  #parent;
+
+  constructor(parent,title,media_class,media_content_id) {
+    this.#parent = parent;
+    this.#title = title;
+    this.#media_class = media_class;
+    this.#media_content_id = media_content_id;
+  }
+  toJSON() {
+    return {
+      title: this.#title,
+      media_class: this.#media_class,
+      media_content_id: this.#media_content_id,
+      url: this.#url,
+      sub_items: this.#sub_items.map(item => item.toJSON()),
+    }
+  }
+  static fromJSON(data, parent = null) {
+    const newItem = new NavigationItem(parent,data.title,data.media_class,data.media_content_id,data.url);
+    newItem.setURL(data.url);
+    if (Array.isArray(data.sub_items)) {
+      newItem.getSubItems().push(...data.sub_items.map(sub_item_data => NavigationItem.fromJSON(sub_item_data,newItem)));
+    }
+
+    return newItem;
+  }
+
+  getTitle() {return this.#title}
+  getContentID() {return this.#media_content_id}
+  getURL() {return this.#url}
+  getSubItems() { return this.#sub_items}
+  getParent() {return this.#parent}
+
+  setURL(url) {this.#url = url;}
+  addSubItem(item) {
+    if (!(item instanceof NavigationItem)) throw new TypeError("addSubItem error");
+    else this.#sub_items.push(item);
+  }
+  addSubItems(items) {
+    if (items.any((item) => !(item instanceof NavigationItem))) throw new TypeError("addSubItems error");
+    else this.#sub_items.push(items);
+  }
+  resetSubItems() {
+    this.#sub_items = [];
+  }
+  removeSubItem(media_content_id) {
+    this.#sub_items = this.#sub_items.filter((item) => item.getContentID() !== media_content_id);
+  }
+
+  isURLok() {return this.#url.length > 0}
+  isDirectory() {return this.#media_class === "directory"}
+  isFile() {return !isDirectory()}
+  isVideo() {return this.#media_class === "video"}
+  isImage() {return this.#media_class === "image"}
+  isAudio() {return this.#media_class === "audio"}
+
+}
+
 class MediaExplorerCard extends i {
+  /** @type {NavigationItem | null} */
+  rootItem = null;
+  /** @type {NavigationItem | null} */
+  currentItem = null;
+  title = null;
+  version = "20251105a";
 
   static properties = {
     hass: {},
@@ -407,8 +483,8 @@ class MediaExplorerCard extends i {
 
   constructor() {
     super();
-    this._pathList = [];
-    this._itemList = [];
+    /*this._pathList = [];
+    this._itemList = [];*/
     this._playerOn = false;
     this._playerFullScreenOn = false;
     this._openedFile = null;
@@ -421,50 +497,109 @@ class MediaExplorerCard extends i {
   setConfig(config) { 
     this.config = config; 
     
-    this._pathList.push(config.start_path);
-    this._title = config.title ? config.title : null;
+    //this._pathList.push(config.start_path);
+    this.title = config.title ? config.title : null;
+
+    if (!config.start_path) throw new TypeError("Missing start_path");
+    this.cacheName = "mec_" + config.start_path.replaceAll(" ","_");
+    this.rootItem = this.reloadFromCache();
+
+    if (this.rootItem == null) this.rootItem = new NavigationItem(null,"root","directory",config.start_path);
+    this.currentItem = this.rootItem;
+
   }
 
-  getCardSize() { 
-    return 3; 
-  }
+  getCardSize() { return 3; }
 
   firstUpdated() {
     this.getCurrentDirectoryItems();   
   }
 
-  updated(changedProps) {
-    super.updated(changedProps);
-  }
+  updated(changedProps) { super.updated(changedProps); }
 
-  render() {
-    return renderTemplate(this);
+  render() { return renderTemplate(this); }
+
+  saveToCache() {
+    const data = {
+      version: this.version,
+      rootItem: this.rootItem,
+    };
+    localStorage.setItem(this.cacheName, JSON.stringify(data));
+  }
+  reloadFromCache() {
+    const json = localStorage.getItem(this.cacheName);
+    if (!json) return null; // No cache found
+    
+    try {
+      const data = JSON.parse(json);
+
+      if (data.version !== this.version){
+        localStorage.removeItem(this.cacheName);
+        console.warn("Version changed -> cache cleared");
+        return null; // version changed -> clear the cache!
+      }
+      return NavigationItem.fromJSON(data.rootItem);
+    }
+    catch (err) { // An error occured -> clear the cache!
+      console.warn("Error reading cache:", err);
+      localStorage.removeItem(this.cacheName);
+      return null;
+    }
+
   }
 
   async getCurrentDirectoryItems() {
     this._navigationLoading = true;
-    this._itemList = (await this.hass.callWS({ type: "media_source/browse_media", media_content_id: this._pathList.at(-1) })).children ?? [];
-    this._navigationLoading = false;
-    this.requestUpdate();
+    if (this.currentItem.getSubItems().length > 0) this.requestUpdate(); // Update immediatly with existing data
+
+    const returnedItems = (await this.hass.callWS({ type: "media_source/browse_media", media_content_id: this.currentItem.getContentID() })).children ?? [];  
+    let something_changed = this.mergeHAItemsWithCurrentSubItems(returnedItems,this.currentItem.getSubItems());
+    if (something_changed) {
+      this.saveToCache();
+      this._navigationLoading = false;
+      this.requestUpdate();
+    }
+    else this._navigationLoading = false;
   }
 
-  openItem(item,index) {
+  mergeHAItemsWithCurrentSubItems(HAItems,CurrentSubItems) {
+    const currentSubItemsMap = new Map(CurrentSubItems.map(item => [item.getContentID(), item]));
+    const HAItemsContentIDs = HAItems.map(item => item.media_content_id);
+    let something_changed = false;
 
-    if (isDirectory(item)) {
+    if (CurrentSubItems.some(item => !HAItemsContentIDs.includes(item.getContentID()))) something_changed = true; // At least one element was deleted
+
+    CurrentSubItems.length = 0;
+
+    for (const item of HAItems) {
+      const existing = currentSubItemsMap.get(item.media_content_id);
+      if (existing) CurrentSubItems.push(existing);
+      else {
+        CurrentSubItems.push(new NavigationItem(this.currentItem,item.title,item.media_class,item.media_content_id,""));
+        something_changed = true; // At least one element was added
+      }
+    }
+
+    return something_changed;
+  }
+
+  openItem(item) {
+
+    if (item.isDirectory()) {
       this.navigateForward(item);
     } else {
-      this.openFile(item,index);
+      this.openFile(item);
     }
   }
 
-  async openFile(item,index) {
-    this._openedFileIndex = index;
+  async openFile(item) {
+    //this._openedFileIndex = index;
     this._playerOn = true;
     this._fileLoading = true;
     this._openedFile = item;
     this._abortController = new AbortController();
     this.requestUpdate();
-    const resolved = await this.hass.callWS({ type: "media_source/resolve_media", media_content_id: item.media_content_id});
+    const resolved = await this.hass.callWS({ type: "media_source/resolve_media", media_content_id: item.getContentID()});
     if (this._playerOn) { // Player is still on
       this._openedFileUrl = resolved.url;
       this._fileLoading = false;
@@ -472,15 +607,13 @@ class MediaExplorerCard extends i {
   }
 
   async navigateForward(item) {
-      this._pathList.push(item.media_content_id);
-      this._itemList = [];
-      this.getCurrentDirectoryItems();
+    this.currentItem = item;
+    this.getCurrentDirectoryItems();
   }
 
   async navigateBackward() {
-      if (this._pathList.length <= 1) return;
-      this._pathList.pop();
-      this._itemList = [];
+      if (this.currentItem.getParent() == null) return;
+      this.currentItem = this.currentItem.getParent();
       this.getCurrentDirectoryItems();
   }
 

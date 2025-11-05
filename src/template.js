@@ -51,6 +51,7 @@ const closeIcon = html`
     <line x1="6" y1="6" x2="18" y2="18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 
+
 /**
  * @param {import('./card.js').MediaExplorerCard} card
 */
@@ -60,32 +61,30 @@ export const renderTemplate = (card) => html`
       
       <div id="mec-header">
         <div id="mec-header-browser-buttons" ?hidden="${card._playerOn}">
-          <button class="mec-button" ?disabled="${card._pathList.length <= 1}" @click="${() => card.navigateBackward()}">${backIcon}</button>
+          <button class="mec-button" ?disabled="${card.currentItem.getParent() == null}" @click="${() => card.navigateBackward()}">${backIcon}</button>
         </div>
         <div id="mec-header-player-buttons" ?hidden="${!card._playerOn}">
           <button class="mec-button" @click="${() => card.closeFile()}">${closeIcon}</button>
           <button class="mec-button" @click=${() => card.toggleFullscreenPlayer()}>${zoomIcon}</button>
-          <button class="mec-button" ?disabled="${card._openedFileIndex <= 0}" @click=${() => card.openFile(card._itemList[card._openedFileIndex-1],card._openedFileIndex-1)}>${prevIcon}</button>
-          <button class="mec-button" ?disabled="${card._openedFileIndex >= card._itemList?.length-1}" @click=${() => card.openFile(card._itemList[card._openedFileIndex+1],card._openedFileIndex+1)}>${nextIcon}</button>
         </div>
 
         <div id="mec-header-title" ?hidden="${!card._title}"> ${card._title} </div>
         
-        <div class="mec-header-txt-info" ?hidden="${card._playerOn || card._pathList.length <= 1}">${card._pathList.at(-1).replace(card._pathList[0],".")}</div>
-        <div class="mec-header-txt-info" ?hidden="${!card._playerOn}">${card._openedFile?.title}</div>
+        <div class="mec-header-txt-info" ?hidden="${card._playerOn || card.currentItem.getParent() == null}">${card.currentItem.getTitle()}</div>
+        <div class="mec-header-txt-info" ?hidden="${!card._playerOn}">${card.currentItem.getTitle()}</div>
       </div>
       
       <div id="mec-content">       
 
         <div id="mec-browser-content" ?hidden="${card._playerOn}">
-          ${card._navigationLoading ? html`<div class="loading">Loading...</div>` : card._itemList.length ? getItemList(card) : html`<div class="p-4">No files found.</div>`}
+          ${card.currentItem.getSubItems().length > 0 ? getItemList(card) : card._navigationLoading ? html`<div class="loading">Loading...</div>` : html`<div class="p-4">No files found.</div>`}
         </div>
 
         <div id="mec-player-content" ?hidden="${!card._playerOn}">
           ${card._fileLoading ? 
             html`<div class="loading">Loading...</div>` :
             card._openedFileUrl && !card._playerFullScreenOn
-            ? getPlayer(card._openedFile,card._openedFileUrl)
+            ? getPlayer(card.currentItem)
             : html`<div>I'm confused</div>`}
         </div>
 
@@ -108,22 +107,31 @@ export const renderTemplate = (card) => html`
  * @param {import('./card.js').MediaExplorerCard} card
 */
 const getItemList = (card) => html`
-    ${card._itemList.map((item, index) => html`
-      <div class="mec-browser-content-item" @click="${() => {card.openItem(item, index)}}">
+    ${card.currentItem.getSubItems().map((item) => html`
+      <div class="mec-browser-content-item" @click="${() => {card.openItem(item)}}">
         <div class="mec-browser-content-item-icon">
-          ${isDirectory(item) ? folderIcon 
-            : isImage(item) ? imageIcon 
-            : isVideo(item) ? videoIcon 
+          ${item.isDirectory() ? folderIcon 
+            : item.isImage() ? imageIcon 
+            : item.isVideo() ? videoIcon 
             : fileIcon }
         </div>
-        <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
+        <div class="mec-browser-content-item-name">${item.getTitle() ?? "NA"}</div>
       </div>`
     )}
   `;
 
-const getPlayer = (item, url) => html`
-    ${isImage(item) ? html`<img src="${url}" alt="preview" />`
-      : isVideo(item) ? html`<video src="${url}" controls autoplay></video>`
-      : isAudio(item) ? html`<audio src="${url}" controls autoplay></audio>`
-      : html`<a href="${url}" target="_blank">File not supported</a>`}
+const getPlayer = (item) => html`
+    ${item.isImage() ? html`<img src="${item.getURL()}" alt="preview" />`
+      : item.isVideo() ? html`<video src="${item.getURL()}" controls autoplay></video>`
+      : item.isAudio() ? html`<audio src="${item.getURL()}" controls autoplay></audio>`
+      : html`<a href="${item.getURL()}" target="_blank">File not supported</a>`}
   `;
+
+
+
+
+  /*
+
+<button class="mec-button" ?disabled="${card._openedFileIndex <= 0}" @click=${() => card.openFile(card._itemList[card._openedFileIndex-1],card._openedFileIndex-1)}>${prevIcon}</button>
+<button class="mec-button" ?disabled="${card._openedFileIndex >= card._itemList?.length-1}" @click=${() => card.openFile(card._itemList[card._openedFileIndex+1],card._openedFileIndex+1)}>${nextIcon}</button>
+*/
