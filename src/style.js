@@ -48,21 +48,16 @@ export const cardStyle = css`
     padding: 0.5rem;
     cursor: pointer;
     background: none;
-    border: 1px solid var(--secondary-text-color, #ccc);
+    border: 1px solid var(--primary-text-color, #ccc);
     color: var(--primary-text-color);
     border-radius: 50%;
     transition: background 0.2s;
   }
   .mec-button[disabled] {
-    color: var(--disabled-text-color);
-    border: 1px solid var(--disabled-text-color, #ccc);
+    color: var(--state-inactive-color);
+    border: 1px solid var(--state-inactive-color, #ccc);
     cursor: not-allowed;
     opacity: 0.6;
-  }
-  .mec-button-icon {
-    width: var(--mdc-icon-size, 24px);
-    height: var(--mdc-icon-size, 24px);
-    display: block;
   }
 
   #mec-header-title {
@@ -155,6 +150,8 @@ export const cardStyle = css`
     display: flex;
     align-items: center;
     justify-content: center;
+    --mdc-icon-size: 100%;
+    color: var(--state-icon-color);
   }
 
   .mec-browser-content-item-name {

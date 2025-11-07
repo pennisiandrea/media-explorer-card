@@ -24,143 +24,108 @@ const t=globalThis,i$1=t.trustedTypes,s$1=i$1?i$1.createPolicy("lit-html",{creat
  * SPDX-License-Identifier: BSD-3-Clause
  */const s=globalThis;class i extends y$1{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0;}createRenderRoot(){const t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){const r=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=B(r,this.renderRoot,this.renderOptions);}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(true);}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(false);}render(){return T}}i._$litElement$=true,i["finalized"]=true,s.litElementHydrateSupport?.({LitElement:i});const o=s.litElementPolyfillSupport;o?.({LitElement:i});(s.litElementVersions??=[]).push("4.2.1");
 
-function isDirectory(item) {
-    return item?.media_class === "directory";
-}
+const folderIcon = "mdi:folder";
+const fileIcon = "mdi:file";
+const imageIcon = "mdi:image";
+const videoIcon = "mdi:movie";
+const backIcon = "mdi:arrow-left";
+const zoomIcon = "mdi:fullscreen";
+const nextIcon = "mdi:skip-next";
+const prevIcon = "mdi:skip-previous";
+const closeIcon = "mdi:close";
 
-const folderIcon = x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-  </svg>`;
-const fileIcon = x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-  </svg>`;
-const imageIcon = x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-      d="M4 5a2 2 0 012-2h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" />
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-      d="M8 11l2.5 3 3.5-4.5L18 17H6z" />
-    <circle cx="9" cy="7" r="1.5" stroke-width="2" />
-  </svg>`;
-const videoIcon = x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="icon w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-    <rect x="3" y="7" width="12" height="10" rx="2" ry="2" stroke-width="2" />
-  </svg>`;
-const backIcon = x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path d="M20 12H8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M12 6L6 12L12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-const zoomIcon = x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" >
-    <path d="M4 9V4h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M20 9V4h-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M4 15v5h5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M20 15v5h-5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path d="M7 4l7 8-7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M14 4l7 8-7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path d="M17 4l-7 8 7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M10 4l-7 8 7 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-const closeIcon = x`
-  <svg xmlns="http://www.w3.org/2000/svg" class="mec-button-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <line x1="18" y1="6" x2="6" y2="18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="6" y1="6" x2="18" y2="18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-
-
-/**
- * @param {import('./card.js').MediaExplorerCard} card
-*/
+/** @param {import('./card.js').MediaExplorerCard} card */
 const renderTemplate = (card) => x`
   <ha-card>
     <div id="mec-card">
       
       <div id="mec-header">
-        <div id="mec-header-browser-buttons" ?hidden="${card._playerOn}">
-          <button class="mec-button" ?disabled="${card.currentItem.getParent() == null}" @click="${() => card.navigateBackward()}">${backIcon}</button>
+        <div id="mec-header-browser-buttons" ?hidden="${card.currentItemLink.isFile}">
+          <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => card.navigationMap.navigateBack()}"><ha-icon icon=${backIcon}></button>
         </div>
-        <div id="mec-header-player-buttons" ?hidden="${!card._playerOn}">
-          <button class="mec-button" @click="${() => card.closeFile()}">${closeIcon}</button>
-          <button class="mec-button" @click=${() => card.toggleFullscreenPlayer()}>${zoomIcon}</button>
+        <div id="mec-header-player-buttons" ?hidden="${!card.currentItemLink.isFile}">
+          <button class="mec-button" @click="${() => {
+            card.navigationMap.navigateBack();
+            card.fullScreenPlayerOn = false;
+          }}"><ha-icon icon=${closeIcon}></button>
+          <button class="mec-button" @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
+          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= 0}" @click=${() => card.navigationMap.openSibling(card.currentItemLink.siblingIndex - 1)}><ha-icon icon=${prevIcon}></button>
+          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.siblingMaxIndex}" @click=${() => card.navigationMap.openSibling(card.currentItemLink.siblingIndex + 1)}><ha-icon icon=${nextIcon}></button>
         </div>
 
-        <div id="mec-header-title" ?hidden="${!card._title}"> ${card._title} </div>
+        <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
         
-        <div class="mec-header-txt-info" ?hidden="${card._playerOn || card.currentItem.getParent() == null}">${card.currentItem.getTitle()}</div>
-        <div class="mec-header-txt-info" ?hidden="${!card._playerOn}">${card.currentItem.getTitle()}</div>
+        <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isDirectory}">${card.currentItemLink.title}</div>
+        <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isFile || card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
       </div>
       
       <div id="mec-content">       
 
-        <div id="mec-browser-content" ?hidden="${card._playerOn}">
-          ${card.currentItem.getSubItems().length > 0 ? getItemList(card) : card._navigationLoading ? x`<div class="loading">Loading...</div>` : x`<div class="p-4">No files found.</div>`}
+        <div id="mec-browser-content" ?hidden="${card.currentItemLink.isFile}">
+          ${card.currentItemLink.children.length > 0 ? getItemList(card) : card._navigationLoading ? x`<div class="loading">Loading...</div>` : x`<div class="p-4">No files found.</div>`}
         </div>
 
-        <div id="mec-player-content" ?hidden="${!card._playerOn}">
-          ${card._fileLoading ? 
-            x`<div class="loading">Loading...</div>` :
-            card._openedFileUrl && !card._playerFullScreenOn
-            ? getPlayer(card.currentItem)
-            : x`<div>I'm confused</div>`}
+        <div id="mec-player-content" ?hidden="${!card.currentItemLink.isFile}">
+          ${card.navigationMap.loading ? x`<div class="loading">Loading...</div>` :
+            !card.fullScreenPlayerOn ? getPlayer(card) : x`<div>I'm confused</div>`}
         </div>
 
       </div>
     </div>
   </ha-card>
 
-  ${card._openedFileUrl && card._playerFullScreenOn
+  ${card.currentItemLink.isFile && card.fullScreenPlayerOn
     ? x`
         <div id="fullscreen-player">
           <div class="fullscreen-overlay">
-            ${getPlayer(card._openedFile,card._openedFileUrl)}
-            <button class="fullscreen-close" @click="${() => card.toggleFullscreenPlayer()}">${closeIcon}</button>
+            ${getPlayer(card)}
+            <button class="fullscreen-close" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
           </div>
         </div>
     ` : null}
 `;
 
-/**
- * @param {import('./card.js').MediaExplorerCard} card
-*/
-const getItemList = (card) => x`
-    ${card.currentItem.getSubItems().map((item) => x`
-      <div class="mec-browser-content-item" @click="${() => {card.openItem(item);}}">
-        <div class="mec-browser-content-item-icon">
-          ${item.isDirectory() ? folderIcon 
-            : item.isImage() ? imageIcon 
-            : item.isVideo() ? videoIcon 
-            : fileIcon }
-        </div>
-        <div class="mec-browser-content-item-name">${item.getTitle() ?? "NA"}</div>
+/** @param {import('./card.js').MediaExplorerCard} card */
+const getItemList = (card) => {
+  return x`
+    ${card.currentItemLink.children.map((item,index) => x`
+      <div class="mec-browser-content-item" @click="${() => {card.navigationMap.openChild(index);}}">
+        <ha-icon class="mec-browser-content-item-icon" icon=${
+          item.isDirectory ? folderIcon 
+            : item.isImage ? imageIcon 
+            : item.isVideo ? videoIcon 
+            : fileIcon
+          }>
+        </ha-icon>
+        <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
       </div>`
     )}
-  `;
 
-const getPlayer = (item) => x`
-    ${item.isImage() ? x`<img src="${item.getURL()}" alt="preview" />`
-      : item.isVideo() ? x`<video src="${item.getURL()}" controls autoplay></video>`
-      : item.isAudio() ? x`<audio src="${item.getURL()}" controls autoplay></audio>`
-      : x`<a href="${item.getURL()}" target="_blank">File not supported</a>`}
+    ${card.navigationMap.loading && card.currentItemLink.children.length == 0 ? x`
+      <div class="mec-browser-content-item">
+        <div class="mec-browser-content-item-icon"><ha-icon icon=${fileIcon}></div>
+        <div class="mec-browser-content-item-name">Loading...</div>
+      </div>
+      ` : ``}
+  `
+};
+
+const getPlayer = (card) => {
+  const item = card.currentItemLink;
+
+  return x`
+    ${item.isImage ? x`<img src="${item.url}" alt="preview" />`
+      : item.isVideo ? x`<video src="${item.url}" controls autoplay></video>`
+      : item.isAudio ? x`<audio src="${item.url}" controls autoplay></audio>`
+      : x`<a href="${item.url}" target="_blank">File not supported</a>`}
   `;
+};
 
 
 
 
   /*
 
-<button class="mec-button" ?disabled="${card._openedFileIndex <= 0}" @click=${() => card.openFile(card._itemList[card._openedFileIndex-1],card._openedFileIndex-1)}>${prevIcon}</button>
-<button class="mec-button" ?disabled="${card._openedFileIndex >= card._itemList?.length-1}" @click=${() => card.openFile(card._itemList[card._openedFileIndex+1],card._openedFileIndex+1)}>${nextIcon}</button>
 */
 
 const cardStyle = i$3`
@@ -211,21 +176,16 @@ const cardStyle = i$3`
     padding: 0.5rem;
     cursor: pointer;
     background: none;
-    border: 1px solid var(--secondary-text-color, #ccc);
+    border: 1px solid var(--primary-text-color, #ccc);
     color: var(--primary-text-color);
     border-radius: 50%;
     transition: background 0.2s;
   }
   .mec-button[disabled] {
-    color: var(--disabled-text-color);
-    border: 1px solid var(--disabled-text-color, #ccc);
+    color: var(--state-inactive-color);
+    border: 1px solid var(--state-inactive-color, #ccc);
     cursor: not-allowed;
     opacity: 0.6;
-  }
-  .mec-button-icon {
-    width: var(--mdc-icon-size, 24px);
-    height: var(--mdc-icon-size, 24px);
-    display: block;
   }
 
   #mec-header-title {
@@ -318,6 +278,8 @@ const cardStyle = i$3`
     display: flex;
     align-items: center;
     justify-content: center;
+    --mdc-icon-size: 100%;
+    color: var(--state-icon-color);
   }
 
   .mec-browser-content-item-name {
@@ -395,240 +357,288 @@ const cardStyle = i$3`
   }
 `;
 
-/*
-title
-media_class
-media_content_id
-url
-*/
+function saveOnCache(cacheItem,data) {
+    /* data must be something lik:
+    const data = {
+        version: this.version,
+        rootItem: this.rootItem,
+    } */
+    localStorage.setItem(cacheItem, JSON.stringify(data));
+}
+
+function getCachedData(cacheItem) {
+    const json = localStorage.getItem(cacheItem);
+    if (!json) return null; // No cache found
+    
+    try {
+      const data = JSON.parse(json);
+
+      return data;
+    }
+    catch (err) { // An error occured -> clear the cache!
+      console.warn("Error reading cache:", err);
+      clearCache(cacheItem);
+      return null;
+    }
+}
+
+function clearCache(cacheItem) {
+    localStorage.removeItem(cacheItem);
+    console.warn("Version changed -> cache cleared");
+}
+
 class NavigationItem {
-  /* private properties */
+  // Private fields
   #title = "";
-  #media_class = "";
-  #media_content_id = "";
-  #url = "";
-  #sub_items = [];
-  #parent;
+  #mediaClass = "";
+  #mediaContentId = "";
+  #url = null;
 
-  constructor(parent,title,media_class,media_content_id) {
-    this.#parent = parent;
+  // Public fields
+  /** @type {Array< NavigationItem >} */
+  children = []; 
+  /** @type {NavigationItem} */
+  parent;
+  hass;
+
+  // Constructor
+  constructor(hass,parent,title,mediaClass,mediaContentId) {
+    this.parent = parent;
     this.#title = title;
-    this.#media_class = media_class;
-    this.#media_content_id = media_content_id;
+    this.#mediaClass = mediaClass;
+    this.#mediaContentId = mediaContentId;
+    this.hass = hass;
   }
-  toJSON() {
-    return {
-      title: this.#title,
-      media_class: this.#media_class,
-      media_content_id: this.#media_content_id,
-      url: this.#url,
-      sub_items: this.#sub_items.map(item => item.toJSON()),
-    }
-  }
-  static fromJSON(data, parent = null) {
-    const newItem = new NavigationItem(parent,data.title,data.media_class,data.media_content_id,data.url);
-    newItem.setURL(data.url);
-    if (Array.isArray(data.sub_items)) {
-      newItem.getSubItems().push(...data.sub_items.map(sub_item_data => NavigationItem.fromJSON(sub_item_data,newItem)));
-    }
 
+  // Static methods
+  static fromJSON(hass, data, parent = null) {
+    const newItem = new NavigationItem(hass,parent,data.title,data.mediaClass,data.mediaContentId);
+    if (Array.isArray(data.children)) 
+    newItem.children.push(...data.children.map(childData => NavigationItem.fromJSON(hass,childData,newItem)));
+    
     return newItem;
   }
 
-  getTitle() {return this.#title}
-  getContentID() {return this.#media_content_id}
-  getURL() {return this.#url}
-  getSubItems() { return this.#sub_items}
-  getParent() {return this.#parent}
-
-  setURL(url) {this.#url = url;}
-  addSubItem(item) {
-    if (!(item instanceof NavigationItem)) throw new TypeError("addSubItem error");
-    else this.#sub_items.push(item);
+  // Getters
+  get title() {return this.#title}
+  get mediaContentId() {return this.#mediaContentId}
+  get url() {return this.#url}
+  get isDirectory() {return this.#mediaClass === "directory"}
+  get isFile() {return !this.isDirectory}
+  get isVideo() {return this.#mediaClass === "video"}
+  get isImage() {return this.#mediaClass === "image"}
+  get isAudio() {return this.#mediaClass === "audio"}
+  get isRoot() {return this.parent == null}
+  get siblingIndex() {
+    if (!this.parent) return 0;
+    return this.parent.children.indexOf(this);
   }
-  addSubItems(items) {
-    if (items.any((item) => !(item instanceof NavigationItem))) throw new TypeError("addSubItems error");
-    else this.#sub_items.push(items);
-  }
-  resetSubItems() {
-    this.#sub_items = [];
-  }
-  removeSubItem(media_content_id) {
-    this.#sub_items = this.#sub_items.filter((item) => item.getContentID() !== media_content_id);
+  get siblingMaxIndex() {
+    if (this.parent?.children.length > 0) return this.parent.children.length - 1;
+    return 0;
   }
 
-  isURLok() {return this.#url.length > 0}
-  isDirectory() {return this.#media_class === "directory"}
-  isFile() {return !isDirectory()}
-  isVideo() {return this.#media_class === "video"}
-  isImage() {return this.#media_class === "image"}
-  isAudio() {return this.#media_class === "audio"}
+  // Instance methods
+  toJSON() {
+    return {
+      title: this.#title,
+      mediaClass: this.#mediaClass,
+      mediaContentId: this.#mediaContentId,
+      children: this.children.map(child => child.toJSON()),
+    }
+  }
 
+  async getURL() {
+    let changed = false;
+    if (!this.#url) {
+      const result = await this.hass.callWS({ 
+        type: "media_source/resolve_media", 
+        media_content_id: this.#mediaContentId
+      });
+      this.#url = result.url;
+      changed = true;
+    }
+    return changed;
+  }
+
+  async loadChildren() {
+    let changed = false;
+    try {
+      const { children: updatedChildren = []} = await this.hass.callWS({ 
+          type: "media_source/browse_media", 
+          media_content_id: this.#mediaContentId 
+      }) ?? {};  
+      
+      const currentChildrenMap = new Map(this.children.map(item => [item.mediaContentId, item]));
+      const updatedChildrenContentIDs = updatedChildren.map(item => item.media_content_id);
+
+      // Removed elements
+      if (this.children.some(item => !updatedChildrenContentIDs.includes(item.mediaContentId))) changed = true;
+
+      // Rebuild children
+      this.children = updatedChildren.map(item => {
+        const existing = currentChildrenMap.get(item.media_content_id);
+        if (existing) return existing;
+        changed = true;
+        return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);          
+      });
+
+    } catch (err) {
+      console.error("Failed to load children:", err);
+    }
+    
+    return changed;
+  }
+}
+
+class NavigationMap extends EventTarget {
+  // Private fields
+  #cacheItem = "";
+
+  // Public fields
+  /** @type {NavigationItem} */
+  rootItem;
+  /** @type {NavigationItem} */
+  currentItem;
+  hass;
+  loading=false;
+
+  // Constructor
+  constructor(hass, cacheItem, startPath) { 
+    super();
+    
+    this.hass = hass;
+    this.#cacheItem = cacheItem;
+
+    let cachedData = getCachedData(this.#cacheItem);
+    if (cachedData) this.rootItem = NavigationItem.fromJSON(hass,cachedData.rootItem);
+    else this.rootItem = new NavigationItem(hass,null,"root","directory",startPath);
+    
+    this.currentItem = this.rootItem;
+    this.#openCurrentItem(); 
+  }
+
+  // Instance methods
+  navigateBack() {
+    if (!this.loading) {
+      this.currentItem = this.currentItem.parent;
+      this.#openCurrentItem(); 
+    }
+  }
+  openChild(index) {
+    if (!this.loading) {
+      if (index >= 0 && index < this.currentItem.children.length) {
+        this.currentItem = this.currentItem.children[index];      
+        this.#openCurrentItem(); 
+      }
+    }
+  }
+  openSibling(index) {
+    if (!this.loading) {
+      if (index >= 0 && index < this.currentItem.parent.children.length) {
+        this.currentItem = this.currentItem.parent.children[index];      
+        this.#openCurrentItem(); 
+      }
+    }
+  }
+
+  // Private methods
+  #openCurrentItem() {
+    if (this.currentItem.isDirectory) {
+      this.#sendEventCurrentItemChanged();
+      this.#loadCurrentItemChildren();  
+    }    
+    else {
+      this.currentItem.getURL().then(() => {
+        this.#sendEventCurrentItemChanged();
+      });
+    }
+  }
+  #saveMapOnCache() {
+    saveOnCache(this.#cacheItem, {rootItem: this.rootItem});
+  }
+  #loadCurrentItemChildren() {
+    this.loading = true;
+    this.currentItem.loadChildren().then(changed => {
+      this.loading = false;
+      if(changed) {
+        this.#sendEventCurrentItemChanged();
+        this.#saveMapOnCache();
+      }
+    });
+  }
+  #sendEventCurrentItemChanged(){
+    this.dispatchEvent(new CustomEvent("currentItemChanged", {
+        detail: this.currentItem
+    }));
+  }
 }
 
 class MediaExplorerCard extends i {
-  /** @type {NavigationItem | null} */
-  rootItem = null;
-  /** @type {NavigationItem | null} */
-  currentItem = null;
-  title = null;
-  version = "20251105a";
+  
+  // private fields
+  #version = "20251107a";
+  #cacheMapItem = "";
+  #cacheGeneralItem = "";
+
+  // public fields
+  /** @type {NavigationMap} */
+  navigationMap;
+  /** @type {NavigationItem} */
+  currentItemLink = null;
+  config;
 
   static properties = {
     hass: {},
     config: {},
+    currentItemLink: { state: true, hasChanged: () => true },
+    fullScreenPlayerOn: { type: Boolean},
   };
 
   static styles = cardStyle;
 
   constructor() {
     super();
-    /*this._pathList = [];
-    this._itemList = [];*/
-    this._playerOn = false;
-    this._playerFullScreenOn = false;
-    this._openedFile = null;
-    this._openedFileUrl = null;
-    this._openedFileIndex = null;
-    this._navigationLoading = false;
-    this._fileLoading = false;
   }
+
+  set hass(hass) {
+    this._hass = hass;
+    if (!this.navigationMap && this.config) this.#initCard();
+  }
+
+  get hass() {return this._hass}
 
   setConfig(config) { 
     this.config = config; 
+
+    // Check parameters
+    if (!this.config.startPath) throw new TypeError("Missing startPath");
+
+    if (this._hass) this.#initCard();
+  }
+
+  #initCard(){
+    this.#cacheMapItem = "mec_" + this.config.startPath.replace(/\s+/g, "_") + "_map";
+    this.#cacheGeneralItem = "mec_" + this.config.startPath.replace(/\s+/g, "_") + "_general";
     
-    //this._pathList.push(config.start_path);
-    this.title = config.title ? config.title : null;
-
-    if (!config.start_path) throw new TypeError("Missing start_path");
-    this.cacheName = "mec_" + config.start_path.replaceAll(" ","_");
-    this.rootItem = this.reloadFromCache();
-
-    if (this.rootItem == null) this.rootItem = new NavigationItem(null,"root","directory",config.start_path);
-    this.currentItem = this.rootItem;
-
+    let cachedData = getCachedData(this.#cacheGeneralItem);
+    if (!cachedData || cachedData.version !== this.#version){
+      clearCache(this.#cacheGeneralItem);
+      clearCache(this.#cacheMapItem);
+      saveOnCache(this.#cacheGeneralItem,{version: this.#version});
+    }
+    
+    this.navigationMap = new NavigationMap(this._hass,this.#cacheMapItem,this.config.startPath);
+    this.navigationMap.addEventListener("currentItemChanged", (e) => {
+      this.currentItemLink = e.detail;
+      this.requestUpdate();
+    });
+    this.currentItemLink = this.navigationMap.currentItem;
   }
 
   getCardSize() { return 3; }
 
-  firstUpdated() {
-    this.getCurrentDirectoryItems();   
-  }
-
-  updated(changedProps) { super.updated(changedProps); }
-
   render() { return renderTemplate(this); }
-
-  saveToCache() {
-    const data = {
-      version: this.version,
-      rootItem: this.rootItem,
-    };
-    localStorage.setItem(this.cacheName, JSON.stringify(data));
-  }
-  reloadFromCache() {
-    const json = localStorage.getItem(this.cacheName);
-    if (!json) return null; // No cache found
-    
-    try {
-      const data = JSON.parse(json);
-
-      if (data.version !== this.version){
-        localStorage.removeItem(this.cacheName);
-        console.warn("Version changed -> cache cleared");
-        return null; // version changed -> clear the cache!
-      }
-      return NavigationItem.fromJSON(data.rootItem);
-    }
-    catch (err) { // An error occured -> clear the cache!
-      console.warn("Error reading cache:", err);
-      localStorage.removeItem(this.cacheName);
-      return null;
-    }
-
-  }
-
-  async getCurrentDirectoryItems() {
-    this._navigationLoading = true;
-    if (this.currentItem.getSubItems().length > 0) this.requestUpdate(); // Update immediatly with existing data
-
-    const returnedItems = (await this.hass.callWS({ type: "media_source/browse_media", media_content_id: this.currentItem.getContentID() })).children ?? [];  
-    let something_changed = this.mergeHAItemsWithCurrentSubItems(returnedItems,this.currentItem.getSubItems());
-    if (something_changed) {
-      this.saveToCache();
-      this._navigationLoading = false;
-      this.requestUpdate();
-    }
-    else this._navigationLoading = false;
-  }
-
-  mergeHAItemsWithCurrentSubItems(HAItems,CurrentSubItems) {
-    const currentSubItemsMap = new Map(CurrentSubItems.map(item => [item.getContentID(), item]));
-    const HAItemsContentIDs = HAItems.map(item => item.media_content_id);
-    let something_changed = false;
-
-    if (CurrentSubItems.some(item => !HAItemsContentIDs.includes(item.getContentID()))) something_changed = true; // At least one element was deleted
-
-    CurrentSubItems.length = 0;
-
-    for (const item of HAItems) {
-      const existing = currentSubItemsMap.get(item.media_content_id);
-      if (existing) CurrentSubItems.push(existing);
-      else {
-        CurrentSubItems.push(new NavigationItem(this.currentItem,item.title,item.media_class,item.media_content_id,""));
-        something_changed = true; // At least one element was added
-      }
-    }
-
-    return something_changed;
-  }
-
-  openItem(item) {
-
-    if (item.isDirectory()) {
-      this.navigateForward(item);
-    } else {
-      this.openFile(item);
-    }
-  }
-
-  async openFile(item) {
-    //this._openedFileIndex = index;
-    this._playerOn = true;
-    this._fileLoading = true;
-    this._openedFile = item;
-    this._abortController = new AbortController();
-    this.requestUpdate();
-    const resolved = await this.hass.callWS({ type: "media_source/resolve_media", media_content_id: item.getContentID()});
-    if (this._playerOn) { // Player is still on
-      this._openedFileUrl = resolved.url;
-      this._fileLoading = false;
-    }
-  }
-
-  async navigateForward(item) {
-    this.currentItem = item;
-    this.getCurrentDirectoryItems();
-  }
-
-  async navigateBackward() {
-      if (this.currentItem.getParent() == null) return;
-      this.currentItem = this.currentItem.getParent();
-      this.getCurrentDirectoryItems();
-  }
-
-  closeFile() {
-    this._playerOn = false;
-    this._openedFile = null;
-    this._openedFileUrl = null;
-    this._openedFileIndex = null;
-    this.requestUpdate();
-  }
-  
-  toggleFullscreenPlayer() {
-    this._playerFullScreenOn = !this._playerFullScreenOn;
-    this.requestUpdate();
-  }
 }
 
 customElements.define('media-explorer-card', MediaExplorerCard);
