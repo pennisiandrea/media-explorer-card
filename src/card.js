@@ -7,7 +7,7 @@ import { LitElement } from 'lit';
 class MediaExplorerCard extends LitElement {
   
   // private fields
-  #version = "20251107a";
+  #version = "20251109b";
   cacheManager;
   #cacheDBName = "MediaExplorerCard";
   #cacheDBVersion = 1;

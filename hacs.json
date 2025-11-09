@@ -1,6 +1,9 @@
 {
   "name": "Media Explorer Card",
   "filename": "media-explorer-card.js",
-  "hide_default_branch": true,
-  "homeassistant": "2024.6.0"
+  "render_readme": true,
+  "hide_default_branch": false,
+  "homeassistant": "2024.6.0",
+  "country": "any",
+  "zip_release": false
 }
