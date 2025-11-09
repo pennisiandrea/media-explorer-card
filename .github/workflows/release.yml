@@ -7,7 +7,6 @@ on:
 
 permissions: {}
 
-
 jobs:
   release:
     runs-on: ubuntu-latest
