@@ -1,0 +1,7 @@
+Only commits with tag "release" will be used to generate a new release.
+To commit a release version follow these steps:
+
+1. Create a local commit 
+2. Remove tag "release" with checkbox "Remove tag from all remotes"
+3. Insert a new tag "release" in the last commit WITHOUT the checkbox "Push tag:"
+4. Push with checkbox "Push all tags"
