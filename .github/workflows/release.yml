@@ -40,8 +40,8 @@ jobs:
           if [ -z "$LAST_TAG" ]; then
             NEXT_TAG="${TODAY}.a"
           else
-            LAST_LETTER=${LAST_TAG:10:1}
-            NEXT_LETTER=$(echo "$LAST_LETTER" | tr "0-9a-y" "1-9b-z")
+            LAST_LETTER=${LAST_TAG:11:1}
+            NEXT_LETTER=$(echo "$LAST_LETTER" | tr "0-9a-y" "0-9b-z")
             NEXT_TAG="${TODAY}.${NEXT_LETTER}"
           fi
 
