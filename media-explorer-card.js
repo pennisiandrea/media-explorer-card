@@ -33,6 +33,10 @@ const zoomIcon = "mdi:fullscreen";
 const nextIcon = "mdi:skip-next";
 const prevIcon = "mdi:skip-previous";
 const closeIcon = "mdi:close";
+const dotsIcon = "mdi:dots-vertical";
+const homeIcon = "mdi:home";
+const refreshIcon = "mdi:refresh";
+const clearIcon = "mdi:trash-can";
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 const renderTemplate = (card) => x`
@@ -55,14 +59,21 @@ const renderTemplate = (card) => x`
 
         <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
         
-        <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isDirectory}">${card.currentItemLink.title}</div>
-        <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isFile || card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
+        <div id="mec-header-info-area">
+          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isFile)}">${card.currentItemLink.title}</div>
+          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && !card.currentItemLink.isRoot)}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
+          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && card.currentItemLink.isRoot)}">${card.currentItemLink.mediaContentId}</div>
+        </div>
+        
+        <div id="mec-header-right-area">
+          <button id="mec-menu-button" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
+        </div>
       </div>
       
       <div id="mec-content">       
 
         <div id="mec-browser-content" ?hidden="${card.currentItemLink.isFile}">
-          ${card.currentItemLink.children.length > 0 ? getItemList(card) : card._navigationLoading ? x`<div class="loading">Loading...</div>` : x`<div class="p-4">No files found.</div>`}
+          ${card.currentItemLink.children.length > 0 ? getItemList(card) : card.navigationMap.loading ? x`<div class="loading">Loading...</div>` : x`<div class="p-4">No files found.</div>`}
         </div>
 
         <div id="mec-player-content" ?hidden="${!card.currentItemLink.isFile}">
@@ -73,6 +84,25 @@ const renderTemplate = (card) => x`
       </div>
     </div>
   </ha-card>
+            
+  ${card.menuOn
+    ? x`
+        <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
+        <div class="mec-menu">
+          <button class="mec-menu-item" @click=${() => {
+            card.navigationMap.navigateBackToRoot();
+            card.menuOn = false;
+          }}><ha-icon icon=${homeIcon}></ha-icon> Back to root </button>
+          <button class="mec-menu-item" @click=${() => {
+            card.navigationMap.reloadCurrentItem();
+            card.menuOn = false;
+          }}><ha-icon icon=${refreshIcon}></ha-icon> Refresh </button>
+          <button class="mec-menu-item" @click=${() => {
+            card.navigationMap.clearCache();
+            card.menuOn = false;
+          }}><ha-icon icon=${clearIcon}></ha-icon> Clear cache </button>
+        </div>
+    ` : null}
 
   ${card.currentItemLink.isFile && card.fullScreenPlayerOn
     ? x`
@@ -114,7 +144,7 @@ const getPlayer = (card) => {
   const item = card.currentItemLink;
 
   return x`
-    ${item.isImage ? x`<img src="${item.url}" alt="preview" />`
+    ${item.isImage ? x`<img src="${item.url}" alt="${item.title}" />`
       : item.isVideo ? x`<video src="${item.url}" controls autoplay></video>`
       : item.isAudio ? x`<audio src="${item.url}" controls autoplay></audio>`
       : x`<a href="${item.url}" target="_blank">File not supported</a>`}
@@ -156,8 +186,9 @@ const cardStyle = i$3`
 /* --------- HEADER -----------*/
   #mec-header {
     display: grid;
-    padding: 0.5rem;
+    padding: 0.5rem 0.5rem 0rem 0.5rem;
     grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: 1fr auto;
     align-items: center; 
   }
 
@@ -166,6 +197,7 @@ const cardStyle = i$3`
     display: flex;
     gap: 0.5rem;
     grid-column: 1;
+    grid-row: 1;
   }
   #mec-header-browser-buttons[hidden],
   #mec-header-player-buttons[hidden] {
@@ -176,8 +208,8 @@ const cardStyle = i$3`
     padding: 0.5rem;
     cursor: pointer;
     background: none;
-    border: 1px solid var(--primary-text-color, #ccc);
-    color: var(--primary-text-color);
+    border: 1px solid var(--secondary-text-color, #ccc);
+    color: var(--secondary-text-color);
     border-radius: 50%;
     transition: background 0.2s;
   }
@@ -192,18 +224,23 @@ const cardStyle = i$3`
     font-size: var(--paper-font-headline_-_font-size, 20px);
     color: var(--primary-text-color);
     grid-column: 2;
+    grid-row: 1;
     text-align: center;
   }
 
+  #mec-header-info-area {
+    display: flex;
+    gap: 0.5rem;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 5px 5px 0px 5px;
+  }
+
   .mec-header-txt-info {
-    margin: 0;
     color: var(--secondary-text-color);
-    text-align: right;
-    flex: 1;
+    text-align: left;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
-    grid-column: 3;
   }
   mec-header-txt-info[hidden] {
     display: none;
@@ -211,22 +248,25 @@ const cardStyle = i$3`
 
   @media (max-width: 600px) {
     #mec-header {
-      grid-template-rows: 1fr auto 1fr;
-      grid-template-columns: auto;
+      grid-template-rows: 1fr auto auto;
+      grid-template-columns: 1fr 1fr;
     }
     #mec-header-title {
       grid-row: 1;
-      grid-column: initial;
+      grid-column: 1 / -1;
     }
     #mec-header-browser-buttons,
     #mec-header-player-buttons {
       grid-row: 2;
       grid-column: initial;
     }
-    .mec-header-txt-info {
+    #mec-header-right-area {
+      grid-row: 2;
+      grid-column: end;
+    }
+    #mec-header-info-area {
       grid-row: 3;
-      grid-column: initial;
-      text-align: left;
+      grid-column: 1 / -1;
     }
   }
 
@@ -252,7 +292,6 @@ const cardStyle = i$3`
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 0.5rem;
-    padding: 0.5rem;
     overflow-y: auto;
     box-sizing: border-box;
   }
@@ -317,6 +356,67 @@ const cardStyle = i$3`
     border-radius: 4px;
   }
 
+  /* --- MENU --- */
+  #mec-header-right-area {
+    display: flex;
+    gap: 0.5rem;
+    grid-column: 3;
+    grid-row: 1;
+    justify-content: end;
+  }
+  #mec-menu-button {
+    border: none;
+  }
+  .mec-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 998;
+  }
+
+  .mec-menu {
+    position: absolute;
+    top: 40px;
+    right: 8px;
+    background: var(--card-background-color, #fff);
+    border: 1px solid var(--divider-color, #ccc);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 999;
+    animation: mec-menu-fadein 0.15s ease-out;
+  }
+
+  .mec-menu-item {
+    display: flex;
+    width: 100%;
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--secondary-text-color);
+    font: inherit;
+    border-radius: 6px;
+    align-items:center;
+    gap: 6px;
+  }
+
+  .mec-menu-item:hover {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  @keyframes mec-menu-fadein {
+    from {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* --- FULLSCREEN --- */
   #fullscreen-player {
     position: fixed;
@@ -357,42 +457,13 @@ const cardStyle = i$3`
   }
 `;
 
-function saveOnCache(cacheItem,data) {
-    /* data must be something lik:
-    const data = {
-        version: this.version,
-        rootItem: this.rootItem,
-    } */
-    localStorage.setItem(cacheItem, JSON.stringify(data));
-}
-
-function getCachedData(cacheItem) {
-    const json = localStorage.getItem(cacheItem);
-    if (!json) return null; // No cache found
-    
-    try {
-      const data = JSON.parse(json);
-
-      return data;
-    }
-    catch (err) { // An error occured -> clear the cache!
-      console.warn("Error reading cache:", err);
-      clearCache(cacheItem);
-      return null;
-    }
-}
-
-function clearCache(cacheItem) {
-    localStorage.removeItem(cacheItem);
-    console.warn("Version changed -> cache cleared");
-}
-
 class NavigationItem {
   // Private fields
   #title = "";
   #mediaClass = "";
   #mediaContentId = "";
   #url = null;
+  #lastUpdateDT = null;
 
   // Public fields
   /** @type {Array< NavigationItem >} */
@@ -402,19 +473,20 @@ class NavigationItem {
   hass;
 
   // Constructor
-  constructor(hass,parent,title,mediaClass,mediaContentId) {
+  constructor(hass,parent,title,mediaClass,mediaContentId,lastUpdateDT=null) {
     this.parent = parent;
     this.#title = title;
     this.#mediaClass = mediaClass;
     this.#mediaContentId = mediaContentId;
     this.hass = hass;
+    this.#lastUpdateDT = lastUpdateDT;
   }
 
   // Static methods
   static fromJSON(hass, data, parent = null) {
-    const newItem = new NavigationItem(hass,parent,data.title,data.mediaClass,data.mediaContentId);
+    const newItem = new NavigationItem(hass,parent,data.title,data.mediaClass,data.mediaContentId,data.lastUpdateDT);
     if (Array.isArray(data.children)) 
-    newItem.children.push(...data.children.map(childData => NavigationItem.fromJSON(hass,childData,newItem)));
+      newItem.children.push(...data.children.map(childData => NavigationItem.fromJSON(hass,childData,newItem)));
     
     return newItem;
   }
@@ -437,6 +509,7 @@ class NavigationItem {
     if (this.parent?.children.length > 0) return this.parent.children.length - 1;
     return 0;
   }
+  get lastUpdateDT() {return this.#lastUpdateDT}
 
   // Instance methods
   toJSON() {
@@ -444,6 +517,7 @@ class NavigationItem {
       title: this.#title,
       mediaClass: this.#mediaClass,
       mediaContentId: this.#mediaContentId,
+      lastUpdateDT: this.#lastUpdateDT,
       children: this.children.map(child => child.toJSON()),
     }
   }
@@ -482,6 +556,7 @@ class NavigationItem {
         changed = true;
         return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);          
       });
+      this.#lastUpdateDT = Date.now();
 
     } catch (err) {
       console.error("Failed to load children:", err);
@@ -489,11 +564,20 @@ class NavigationItem {
     
     return changed;
   }
+
+  clearURL () {
+    this.#url = null;
+    for (const child of this.children) child.clearURL();
+  }
 }
 
 class NavigationMap extends EventTarget {
   // Private fields
-  #cacheItem = "";
+  /** @type {import('./utils.js').CacheManager} */
+  #cacheManager;
+  #cacheKey = "";
+  #initDone = false;
+  #startPath = "";
 
   // Public fields
   /** @type {NavigationItem} */
@@ -504,28 +588,40 @@ class NavigationMap extends EventTarget {
   loading=false;
 
   // Constructor
-  constructor(hass, cacheItem, startPath) { 
+  constructor(hass, cacheManager, cacheKey, startPath) { 
     super();
     
     this.hass = hass;
-    this.#cacheItem = cacheItem;
+    this.#cacheManager = cacheManager;
+    this.#cacheKey = cacheKey;
+    this.#startPath = startPath;
 
-    let cachedData = getCachedData(this.#cacheItem);
-    if (cachedData) this.rootItem = NavigationItem.fromJSON(hass,cachedData.rootItem);
-    else this.rootItem = new NavigationItem(hass,null,"root","directory",startPath);
-    
-    this.currentItem = this.rootItem;
-    this.#openCurrentItem(); 
+    this.#Init();
   }
 
   // Instance methods
+  navigateBackToRoot() {
+    if (!this.#initDone) return null;
+    if (!this.loading) {
+      this.currentItem = this.rootItem;
+      this.#openCurrentItem(); 
+    }
+  }
   navigateBack() {
+    if (!this.#initDone) return null;
     if (!this.loading) {
       this.currentItem = this.currentItem.parent;
       this.#openCurrentItem(); 
     }
   }
+  reloadCurrentItem() {
+    if (!this.#initDone) return null;
+    if (!this.loading) {
+      this.#openCurrentItem(); 
+    }
+  }
   openChild(index) {
+    if (!this.#initDone) return null;
     if (!this.loading) {
       if (index >= 0 && index < this.currentItem.children.length) {
         this.currentItem = this.currentItem.children[index];      
@@ -534,6 +630,7 @@ class NavigationMap extends EventTarget {
     }
   }
   openSibling(index) {
+    if (!this.#initDone) return null;
     if (!this.loading) {
       if (index >= 0 && index < this.currentItem.parent.children.length) {
         this.currentItem = this.currentItem.parent.children[index];      
@@ -541,8 +638,27 @@ class NavigationMap extends EventTarget {
       }
     }
   }
+  clearCache() {
+    if (!this.#initDone) return null;
+    this.#cacheManager.clearCache(this.#cacheKey);
+    this.currentItem = this.rootItem;
+    this.rootItem.children = [];
+    this.#openCurrentItem();
+  }
 
   // Private methods
+  async #Init() {
+
+    let cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
+    if (!cachedData) this.rootItem = new NavigationItem(this.hass,null,"root","directory",this.#startPath);
+    else this.rootItem = NavigationItem.fromJSON(this.hass,cachedData);
+    
+    this.rootItem.clearURL();
+
+    this.currentItem = this.rootItem;
+    this.#openCurrentItem(); 
+    this.#initDone = true;
+  }
   #openCurrentItem() {
     if (this.currentItem.isDirectory) {
       this.#sendEventCurrentItemChanged();
@@ -555,7 +671,7 @@ class NavigationMap extends EventTarget {
     }
   }
   #saveMapOnCache() {
-    saveOnCache(this.#cacheItem, {rootItem: this.rootItem});
+    this.#cacheManager.saveOnCache(this.#cacheKey, this.rootItem.toJSON());
   }
   #loadCurrentItemChildren() {
     this.loading = true;
@@ -572,14 +688,371 @@ class NavigationMap extends EventTarget {
         detail: this.currentItem
     }));
   }
+  #findOldestDirectory(thisDirectory, oldestDirectory) {
+    if (oldestDirectory == null || thisDirectory.lastUpdateDT < oldestDirectory.lastUpdateDT) oldestDirectory = thisDirectory;
+
+    for(const child of thisDirectory.children) {
+      if (child.isDirectory) oldestDirectory = this.#findOldestDirectory(child,oldestDirectory);
+    }
+
+    return oldestDirectory;
+  }
+}
+
+const instanceOfAny = (object, constructors) => constructors.some((c) => object instanceof c);
+
+let idbProxyableTypes;
+let cursorAdvanceMethods;
+// This is a function to prevent it throwing up in node environments.
+function getIdbProxyableTypes() {
+    return (idbProxyableTypes ||
+        (idbProxyableTypes = [
+            IDBDatabase,
+            IDBObjectStore,
+            IDBIndex,
+            IDBCursor,
+            IDBTransaction,
+        ]));
+}
+// This is a function to prevent it throwing up in node environments.
+function getCursorAdvanceMethods() {
+    return (cursorAdvanceMethods ||
+        (cursorAdvanceMethods = [
+            IDBCursor.prototype.advance,
+            IDBCursor.prototype.continue,
+            IDBCursor.prototype.continuePrimaryKey,
+        ]));
+}
+const transactionDoneMap = new WeakMap();
+const transformCache = new WeakMap();
+const reverseTransformCache = new WeakMap();
+function promisifyRequest(request) {
+    const promise = new Promise((resolve, reject) => {
+        const unlisten = () => {
+            request.removeEventListener('success', success);
+            request.removeEventListener('error', error);
+        };
+        const success = () => {
+            resolve(wrap(request.result));
+            unlisten();
+        };
+        const error = () => {
+            reject(request.error);
+            unlisten();
+        };
+        request.addEventListener('success', success);
+        request.addEventListener('error', error);
+    });
+    // This mapping exists in reverseTransformCache but doesn't exist in transformCache. This
+    // is because we create many promises from a single IDBRequest.
+    reverseTransformCache.set(promise, request);
+    return promise;
+}
+function cacheDonePromiseForTransaction(tx) {
+    // Early bail if we've already created a done promise for this transaction.
+    if (transactionDoneMap.has(tx))
+        return;
+    const done = new Promise((resolve, reject) => {
+        const unlisten = () => {
+            tx.removeEventListener('complete', complete);
+            tx.removeEventListener('error', error);
+            tx.removeEventListener('abort', error);
+        };
+        const complete = () => {
+            resolve();
+            unlisten();
+        };
+        const error = () => {
+            reject(tx.error || new DOMException('AbortError', 'AbortError'));
+            unlisten();
+        };
+        tx.addEventListener('complete', complete);
+        tx.addEventListener('error', error);
+        tx.addEventListener('abort', error);
+    });
+    // Cache it for later retrieval.
+    transactionDoneMap.set(tx, done);
+}
+let idbProxyTraps = {
+    get(target, prop, receiver) {
+        if (target instanceof IDBTransaction) {
+            // Special handling for transaction.done.
+            if (prop === 'done')
+                return transactionDoneMap.get(target);
+            // Make tx.store return the only store in the transaction, or undefined if there are many.
+            if (prop === 'store') {
+                return receiver.objectStoreNames[1]
+                    ? undefined
+                    : receiver.objectStore(receiver.objectStoreNames[0]);
+            }
+        }
+        // Else transform whatever we get back.
+        return wrap(target[prop]);
+    },
+    set(target, prop, value) {
+        target[prop] = value;
+        return true;
+    },
+    has(target, prop) {
+        if (target instanceof IDBTransaction &&
+            (prop === 'done' || prop === 'store')) {
+            return true;
+        }
+        return prop in target;
+    },
+};
+function replaceTraps(callback) {
+    idbProxyTraps = callback(idbProxyTraps);
+}
+function wrapFunction(func) {
+    // Due to expected object equality (which is enforced by the caching in `wrap`), we
+    // only create one new func per func.
+    // Cursor methods are special, as the behaviour is a little more different to standard IDB. In
+    // IDB, you advance the cursor and wait for a new 'success' on the IDBRequest that gave you the
+    // cursor. It's kinda like a promise that can resolve with many values. That doesn't make sense
+    // with real promises, so each advance methods returns a new promise for the cursor object, or
+    // undefined if the end of the cursor has been reached.
+    if (getCursorAdvanceMethods().includes(func)) {
+        return function (...args) {
+            // Calling the original function with the proxy as 'this' causes ILLEGAL INVOCATION, so we use
+            // the original object.
+            func.apply(unwrap(this), args);
+            return wrap(this.request);
+        };
+    }
+    return function (...args) {
+        // Calling the original function with the proxy as 'this' causes ILLEGAL INVOCATION, so we use
+        // the original object.
+        return wrap(func.apply(unwrap(this), args));
+    };
+}
+function transformCachableValue(value) {
+    if (typeof value === 'function')
+        return wrapFunction(value);
+    // This doesn't return, it just creates a 'done' promise for the transaction,
+    // which is later returned for transaction.done (see idbObjectHandler).
+    if (value instanceof IDBTransaction)
+        cacheDonePromiseForTransaction(value);
+    if (instanceOfAny(value, getIdbProxyableTypes()))
+        return new Proxy(value, idbProxyTraps);
+    // Return the same value back if we're not going to transform it.
+    return value;
+}
+function wrap(value) {
+    // We sometimes generate multiple promises from a single IDBRequest (eg when cursoring), because
+    // IDB is weird and a single IDBRequest can yield many responses, so these can't be cached.
+    if (value instanceof IDBRequest)
+        return promisifyRequest(value);
+    // If we've already transformed this value before, reuse the transformed value.
+    // This is faster, but it also provides object equality.
+    if (transformCache.has(value))
+        return transformCache.get(value);
+    const newValue = transformCachableValue(value);
+    // Not all types are transformed.
+    // These may be primitive types, so they can't be WeakMap keys.
+    if (newValue !== value) {
+        transformCache.set(value, newValue);
+        reverseTransformCache.set(newValue, value);
+    }
+    return newValue;
+}
+const unwrap = (value) => reverseTransformCache.get(value);
+
+/**
+ * Open a database.
+ *
+ * @param name Name of the database.
+ * @param version Schema version.
+ * @param callbacks Additional callbacks.
+ */
+function openDB(name, version, { blocked, upgrade, blocking, terminated } = {}) {
+    const request = indexedDB.open(name, version);
+    const openPromise = wrap(request);
+    if (upgrade) {
+        request.addEventListener('upgradeneeded', (event) => {
+            upgrade(wrap(request.result), event.oldVersion, event.newVersion, wrap(request.transaction), event);
+        });
+    }
+    if (blocked) {
+        request.addEventListener('blocked', (event) => blocked(
+        // Casting due to https://github.com/microsoft/TypeScript-DOM-lib-generator/pull/1405
+        event.oldVersion, event.newVersion, event));
+    }
+    openPromise
+        .then((db) => {
+        if (terminated)
+            db.addEventListener('close', () => terminated());
+        if (blocking) {
+            db.addEventListener('versionchange', (event) => blocking(event.oldVersion, event.newVersion, event));
+        }
+    })
+        .catch(() => { });
+    return openPromise;
+}
+
+const readMethods = ['get', 'getKey', 'getAll', 'getAllKeys', 'count'];
+const writeMethods = ['put', 'add', 'delete', 'clear'];
+const cachedMethods = new Map();
+function getMethod(target, prop) {
+    if (!(target instanceof IDBDatabase &&
+        !(prop in target) &&
+        typeof prop === 'string')) {
+        return;
+    }
+    if (cachedMethods.get(prop))
+        return cachedMethods.get(prop);
+    const targetFuncName = prop.replace(/FromIndex$/, '');
+    const useIndex = prop !== targetFuncName;
+    const isWrite = writeMethods.includes(targetFuncName);
+    if (
+    // Bail if the target doesn't exist on the target. Eg, getAll isn't in Edge.
+    !(targetFuncName in (useIndex ? IDBIndex : IDBObjectStore).prototype) ||
+        !(isWrite || readMethods.includes(targetFuncName))) {
+        return;
+    }
+    const method = async function (storeName, ...args) {
+        // isWrite ? 'readwrite' : undefined gzipps better, but fails in Edge :(
+        const tx = this.transaction(storeName, isWrite ? 'readwrite' : 'readonly');
+        let target = tx.store;
+        if (useIndex)
+            target = target.index(args.shift());
+        // Must reject if op rejects.
+        // If it's a write operation, must reject if tx.done rejects.
+        // Must reject with op rejection first.
+        // Must resolve with op value.
+        // Must handle both promises (no unhandled rejections)
+        return (await Promise.all([
+            target[targetFuncName](...args),
+            isWrite && tx.done,
+        ]))[0];
+    };
+    cachedMethods.set(prop, method);
+    return method;
+}
+replaceTraps((oldTraps) => ({
+    ...oldTraps,
+    get: (target, prop, receiver) => getMethod(target, prop) || oldTraps.get(target, prop, receiver),
+    has: (target, prop) => !!getMethod(target, prop) || oldTraps.has(target, prop),
+}));
+
+const advanceMethodProps = ['continue', 'continuePrimaryKey', 'advance'];
+const methodMap = {};
+const advanceResults = new WeakMap();
+const ittrProxiedCursorToOriginalProxy = new WeakMap();
+const cursorIteratorTraps = {
+    get(target, prop) {
+        if (!advanceMethodProps.includes(prop))
+            return target[prop];
+        let cachedFunc = methodMap[prop];
+        if (!cachedFunc) {
+            cachedFunc = methodMap[prop] = function (...args) {
+                advanceResults.set(this, ittrProxiedCursorToOriginalProxy.get(this)[prop](...args));
+            };
+        }
+        return cachedFunc;
+    },
+};
+async function* iterate(...args) {
+    // tslint:disable-next-line:no-this-assignment
+    let cursor = this;
+    if (!(cursor instanceof IDBCursor)) {
+        cursor = await cursor.openCursor(...args);
+    }
+    if (!cursor)
+        return;
+    cursor = cursor;
+    const proxiedCursor = new Proxy(cursor, cursorIteratorTraps);
+    ittrProxiedCursorToOriginalProxy.set(proxiedCursor, cursor);
+    // Map this double-proxy back to the original, so other cursor methods work.
+    reverseTransformCache.set(proxiedCursor, unwrap(cursor));
+    while (cursor) {
+        yield proxiedCursor;
+        // If one of the advancing methods was not called, call continue().
+        cursor = await (advanceResults.get(proxiedCursor) || cursor.continue());
+        advanceResults.delete(proxiedCursor);
+    }
+}
+function isIteratorProp(target, prop) {
+    return ((prop === Symbol.asyncIterator &&
+        instanceOfAny(target, [IDBIndex, IDBObjectStore, IDBCursor])) ||
+        (prop === 'iterate' && instanceOfAny(target, [IDBIndex, IDBObjectStore])));
+}
+replaceTraps((oldTraps) => ({
+    ...oldTraps,
+    get(target, prop, receiver) {
+        if (isIteratorProp(target, prop))
+            return iterate;
+        return oldTraps.get(target, prop, receiver);
+    },
+    has(target, prop) {
+        return isIteratorProp(target, prop) || oldTraps.has(target, prop);
+    },
+}));
+
+class CacheManager {
+  #dbName;
+  #dbVersion;
+  #tableName;
+
+  constructor(dbName,dbVersion,tableName){
+    this.#dbName = dbName;
+    this.#dbVersion = dbVersion;
+    this.#tableName = tableName;
+    
+    this.#getDB(this.#tableName);
+  }
+
+  async saveOnCache(dataKey,data) {
+    try {
+      const db = await this.#getDB(this.#tableName);
+      await db.put(this.#tableName, data, dataKey);
+    } catch (err) {
+      console.error("Error saving to IndexedDB:", err);
+    }
+  }
+  async getCachedData(dataKey) {
+    try {
+      const db = await this.#getDB(this.#tableName);
+      const data = await db.get(this.#tableName, dataKey);
+      if (!data) return null;
+      return data;
+    } catch (err) {
+      console.warn("Error reading cache:", err);
+      await this.clearCache(this.#tableName,dataKey);
+      return null;
+    }
+  }
+  async clearCache(dataKey) {
+    try {
+      const db = await this.#getDB(this.#tableName);
+      await db.delete(this.#tableName, dataKey);
+      console.warn(`[Cache] Cleared ${dataKey}`);
+    } catch (err) {
+      console.error("Error clearing cache:", err);
+    }
+  }
+  
+  // Private methods
+  async #getDB(tableName) {
+    return await openDB(this.#dbName, this.#dbVersion, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(tableName)) db.createObjectStore(tableName);
+      }
+    });
+  }
 }
 
 class MediaExplorerCard extends i {
   
   // private fields
   #version = "20251107a";
-  #cacheMapItem = "";
-  #cacheGeneralItem = "";
+  cacheManager;
+  #cacheDBName = "MediaExplorerCard";
+  #cacheDBVersion = 1;
+  #cacheTableName = "";
+  #cacheMapKey = "map";
+  #cacheVersionKey = "cardVersion";
+  #initDone = false;
 
   // public fields
   /** @type {NavigationMap} */
@@ -593,6 +1066,7 @@ class MediaExplorerCard extends i {
     config: {},
     currentItemLink: { state: true, hasChanged: () => true },
     fullScreenPlayerOn: { type: Boolean},
+    menuOn: { type: Boolean},
   };
 
   static styles = cardStyle;
@@ -617,28 +1091,36 @@ class MediaExplorerCard extends i {
     if (this._hass) this.#initCard();
   }
 
-  #initCard(){
-    this.#cacheMapItem = "mec_" + this.config.startPath.replace(/\s+/g, "_") + "_map";
-    this.#cacheGeneralItem = "mec_" + this.config.startPath.replace(/\s+/g, "_") + "_general";
-    
-    let cachedData = getCachedData(this.#cacheGeneralItem);
-    if (!cachedData || cachedData.version !== this.#version){
-      clearCache(this.#cacheGeneralItem);
-      clearCache(this.#cacheMapItem);
-      saveOnCache(this.#cacheGeneralItem,{version: this.#version});
+  async #initCard(){
+    this.#cacheTableName = "mec_" + this.config.startPath.replace(/\s+/g, "_");
+    this.cacheManager = new CacheManager(this.#cacheDBName,this.#cacheDBVersion,this.#cacheTableName);
+
+    let cachedVersion = await this.cacheManager.getCachedData(this.#cacheVersionKey);
+
+    if (!cachedVersion || cachedVersion !== this.#version){
+      await this.cacheManager.clearCache(this.#cacheVersionKey);
+      await this.cacheManager.clearCache(this.#cacheMapKey);
+      await this.cacheManager.saveOnCache(this.#cacheVersionKey,this.#version);
     }
     
-    this.navigationMap = new NavigationMap(this._hass,this.#cacheMapItem,this.config.startPath);
+    this.navigationMap = new NavigationMap(this._hass,this.cacheManager,this.#cacheMapKey,this.config.startPath);
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;
       this.requestUpdate();
     });
     this.currentItemLink = this.navigationMap.currentItem;
+    this.#initDone = true;
   }
 
   getCardSize() { return 3; }
 
-  render() { return renderTemplate(this); }
+  firstUpdated() {
+  }
+
+  render() { 
+    if (!this.#initDone) return null;
+    return renderTemplate(this); 
+  }
 }
 
 customElements.define('media-explorer-card', MediaExplorerCard);

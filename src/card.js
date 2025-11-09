@@ -1,15 +1,20 @@
 import { renderTemplate } from './template.js';
 import { cardStyle } from './style.js';
 import { NavigationItem, NavigationMap} from './logic.js';
-import { saveOnCache, getCachedData, clearCache } from './utils.js';
+import { CacheManager } from './utils.js';
 import { LitElement } from 'lit';
 
 class MediaExplorerCard extends LitElement {
   
   // private fields
   #version = "20251107a";
-  #cacheMapItem = "";
-  #cacheGeneralItem = "";
+  cacheManager;
+  #cacheDBName = "MediaExplorerCard";
+  #cacheDBVersion = 1;
+  #cacheTableName = "";
+  #cacheMapKey = "map";
+  #cacheVersionKey = "cardVersion";
+  #initDone = false;
 
   // public fields
   /** @type {NavigationMap} */
@@ -23,6 +28,7 @@ class MediaExplorerCard extends LitElement {
     config: {},
     currentItemLink: { state: true, hasChanged: () => true },
     fullScreenPlayerOn: { type: Boolean},
+    menuOn: { type: Boolean},
   };
 
   static styles = cardStyle;
@@ -47,28 +53,36 @@ class MediaExplorerCard extends LitElement {
     if (this._hass) this.#initCard();
   }
 
-  #initCard(){
-    this.#cacheMapItem = "mec_" + this.config.startPath.replace(/\s+/g, "_") + "_map";
-    this.#cacheGeneralItem = "mec_" + this.config.startPath.replace(/\s+/g, "_") + "_general";
-    
-    let cachedData = getCachedData(this.#cacheGeneralItem);
-    if (!cachedData || cachedData.version !== this.#version){
-      clearCache(this.#cacheGeneralItem);
-      clearCache(this.#cacheMapItem);
-      saveOnCache(this.#cacheGeneralItem,{version: this.#version});
+  async #initCard(){
+    this.#cacheTableName = "mec_" + this.config.startPath.replace(/\s+/g, "_");
+    this.cacheManager = new CacheManager(this.#cacheDBName,this.#cacheDBVersion,this.#cacheTableName);
+
+    let cachedVersion = await this.cacheManager.getCachedData(this.#cacheVersionKey);
+
+    if (!cachedVersion || cachedVersion !== this.#version){
+      await this.cacheManager.clearCache(this.#cacheVersionKey);
+      await this.cacheManager.clearCache(this.#cacheMapKey);
+      await this.cacheManager.saveOnCache(this.#cacheVersionKey,this.#version);
     }
     
-    this.navigationMap = new NavigationMap(this._hass,this.#cacheMapItem,this.config.startPath);
+    this.navigationMap = new NavigationMap(this._hass,this.cacheManager,this.#cacheMapKey,this.config.startPath);
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;
       this.requestUpdate();
     });
     this.currentItemLink = this.navigationMap.currentItem;
+    this.#initDone = true;
   }
 
   getCardSize() { return 3; }
 
-  render() { return renderTemplate(this); }
+  firstUpdated() {
+  }
+
+  render() { 
+    if (!this.#initDone) return null;
+    return renderTemplate(this); 
+  }
 }
 
 customElements.define('media-explorer-card', MediaExplorerCard);

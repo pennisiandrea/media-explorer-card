@@ -1,11 +1,10 @@
-import { saveOnCache, getCachedData, clearCache } from './utils.js';
-
 export class NavigationItem {
   // Private fields
   #title = "";
   #mediaClass = "";
   #mediaContentId = "";
   #url = null;
+  #lastUpdateDT = null;
 
   // Public fields
   /** @type {Array< NavigationItem >} */
@@ -15,19 +14,20 @@ export class NavigationItem {
   hass;
 
   // Constructor
-  constructor(hass,parent,title,mediaClass,mediaContentId) {
+  constructor(hass,parent,title,mediaClass,mediaContentId,lastUpdateDT=null) {
     this.parent = parent;
     this.#title = title;
     this.#mediaClass = mediaClass;
     this.#mediaContentId = mediaContentId;
     this.hass = hass;
+    this.#lastUpdateDT = lastUpdateDT;
   }
 
   // Static methods
   static fromJSON(hass, data, parent = null) {
-    const newItem = new NavigationItem(hass,parent,data.title,data.mediaClass,data.mediaContentId);
+    const newItem = new NavigationItem(hass,parent,data.title,data.mediaClass,data.mediaContentId,data.lastUpdateDT);
     if (Array.isArray(data.children)) 
-    newItem.children.push(...data.children.map(childData => NavigationItem.fromJSON(hass,childData,newItem)));
+      newItem.children.push(...data.children.map(childData => NavigationItem.fromJSON(hass,childData,newItem)));
     
     return newItem;
   }
@@ -50,6 +50,7 @@ export class NavigationItem {
     if (this.parent?.children.length > 0) return this.parent.children.length - 1;
     return 0;
   }
+  get lastUpdateDT() {return this.#lastUpdateDT}
 
   // Instance methods
   toJSON() {
@@ -57,6 +58,7 @@ export class NavigationItem {
       title: this.#title,
       mediaClass: this.#mediaClass,
       mediaContentId: this.#mediaContentId,
+      lastUpdateDT: this.#lastUpdateDT,
       children: this.children.map(child => child.toJSON()),
     }
   }
@@ -95,6 +97,7 @@ export class NavigationItem {
         changed = true;
         return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);          
       });
+      this.#lastUpdateDT = Date.now();
 
     } catch (err) {
       console.error("Failed to load children:", err);
@@ -102,11 +105,20 @@ export class NavigationItem {
     
     return changed;
   }
+
+  clearURL () {
+    this.#url = null;
+    for (const child of this.children) child.clearURL();
+  }
 }
 
 export class NavigationMap extends EventTarget {
   // Private fields
-  #cacheItem = "";
+  /** @type {import('./utils.js').CacheManager} */
+  #cacheManager;
+  #cacheKey = "";
+  #initDone = false;
+  #startPath = "";
 
   // Public fields
   /** @type {NavigationItem} */
@@ -117,28 +129,40 @@ export class NavigationMap extends EventTarget {
   loading=false;
 
   // Constructor
-  constructor(hass, cacheItem, startPath) { 
+  constructor(hass, cacheManager, cacheKey, startPath) { 
     super();
     
     this.hass = hass;
-    this.#cacheItem = cacheItem;
+    this.#cacheManager = cacheManager;
+    this.#cacheKey = cacheKey;
+    this.#startPath = startPath;
 
-    let cachedData = getCachedData(this.#cacheItem);
-    if (cachedData) this.rootItem = NavigationItem.fromJSON(hass,cachedData.rootItem);
-    else this.rootItem = new NavigationItem(hass,null,"root","directory",startPath);
-    
-    this.currentItem = this.rootItem;
-    this.#openCurrentItem(); 
+    this.#Init();
   }
 
   // Instance methods
+  navigateBackToRoot() {
+    if (!this.#initDone) return null;
+    if (!this.loading) {
+      this.currentItem = this.rootItem;
+      this.#openCurrentItem(); 
+    }
+  }
   navigateBack() {
+    if (!this.#initDone) return null;
     if (!this.loading) {
       this.currentItem = this.currentItem.parent;
       this.#openCurrentItem(); 
     }
   }
+  reloadCurrentItem() {
+    if (!this.#initDone) return null;
+    if (!this.loading) {
+      this.#openCurrentItem(); 
+    }
+  }
   openChild(index) {
+    if (!this.#initDone) return null;
     if (!this.loading) {
       if (index >= 0 && index < this.currentItem.children.length) {
         this.currentItem = this.currentItem.children[index];      
@@ -147,6 +171,7 @@ export class NavigationMap extends EventTarget {
     }
   }
   openSibling(index) {
+    if (!this.#initDone) return null;
     if (!this.loading) {
       if (index >= 0 && index < this.currentItem.parent.children.length) {
         this.currentItem = this.currentItem.parent.children[index];      
@@ -154,8 +179,27 @@ export class NavigationMap extends EventTarget {
       }
     }
   }
+  clearCache() {
+    if (!this.#initDone) return null;
+    this.#cacheManager.clearCache(this.#cacheKey);
+    this.currentItem = this.rootItem;
+    this.rootItem.children = [];
+    this.#openCurrentItem();
+  }
 
   // Private methods
+  async #Init() {
+
+    let cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
+    if (!cachedData) this.rootItem = new NavigationItem(this.hass,null,"root","directory",this.#startPath);
+    else this.rootItem = NavigationItem.fromJSON(this.hass,cachedData);
+    
+    this.rootItem.clearURL();
+
+    this.currentItem = this.rootItem;
+    this.#openCurrentItem(); 
+    this.#initDone = true;
+  }
   #openCurrentItem() {
     if (this.currentItem.isDirectory) {
       this.#sendEventCurrentItemChanged();
@@ -168,7 +212,7 @@ export class NavigationMap extends EventTarget {
     }
   }
   #saveMapOnCache() {
-    saveOnCache(this.#cacheItem, {rootItem: this.rootItem});
+    this.#cacheManager.saveOnCache(this.#cacheKey, this.rootItem.toJSON());
   }
   #loadCurrentItemChildren() {
     this.loading = true;
@@ -184,5 +228,14 @@ export class NavigationMap extends EventTarget {
     this.dispatchEvent(new CustomEvent("currentItemChanged", {
         detail: this.currentItem
     }));
+  }
+  #findOldestDirectory(thisDirectory, oldestDirectory) {
+    if (oldestDirectory == null || thisDirectory.lastUpdateDT < oldestDirectory.lastUpdateDT) oldestDirectory = thisDirectory;
+
+    for(const child of thisDirectory.children) {
+      if (child.isDirectory) oldestDirectory = this.#findOldestDirectory(child,oldestDirectory);
+    }
+
+    return oldestDirectory;
   }
 }

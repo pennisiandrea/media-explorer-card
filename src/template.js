@@ -9,6 +9,10 @@ const zoomIcon = "mdi:fullscreen";
 const nextIcon = "mdi:skip-next"
 const prevIcon = "mdi:skip-previous";
 const closeIcon = "mdi:close";
+const dotsIcon = "mdi:dots-vertical";
+const homeIcon = "mdi:home";
+const refreshIcon = "mdi:refresh";
+const clearIcon = "mdi:trash-can";
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 export const renderTemplate = (card) => html`
@@ -31,14 +35,21 @@ export const renderTemplate = (card) => html`
 
         <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
         
-        <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isDirectory}">${card.currentItemLink.title}</div>
-        <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isFile || card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
+        <div id="mec-header-info-area">
+          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isFile)}">${card.currentItemLink.title}</div>
+          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && !card.currentItemLink.isRoot)}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
+          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && card.currentItemLink.isRoot)}">${card.currentItemLink.mediaContentId}</div>
+        </div>
+        
+        <div id="mec-header-right-area">
+          <button id="mec-menu-button" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
+        </div>
       </div>
       
       <div id="mec-content">       
 
         <div id="mec-browser-content" ?hidden="${card.currentItemLink.isFile}">
-          ${card.currentItemLink.children.length > 0 ? getItemList(card) : card._navigationLoading ? html`<div class="loading">Loading...</div>` : html`<div class="p-4">No files found.</div>`}
+          ${card.currentItemLink.children.length > 0 ? getItemList(card) : card.navigationMap.loading ? html`<div class="loading">Loading...</div>` : html`<div class="p-4">No files found.</div>`}
         </div>
 
         <div id="mec-player-content" ?hidden="${!card.currentItemLink.isFile}">
@@ -49,6 +60,25 @@ export const renderTemplate = (card) => html`
       </div>
     </div>
   </ha-card>
+            
+  ${card.menuOn
+    ? html`
+        <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
+        <div class="mec-menu">
+          <button class="mec-menu-item" @click=${() => {
+            card.navigationMap.navigateBackToRoot();
+            card.menuOn = false;
+          }}><ha-icon icon=${homeIcon}></ha-icon> Back to root </button>
+          <button class="mec-menu-item" @click=${() => {
+            card.navigationMap.reloadCurrentItem();
+            card.menuOn = false;
+          }}><ha-icon icon=${refreshIcon}></ha-icon> Refresh </button>
+          <button class="mec-menu-item" @click=${() => {
+            card.navigationMap.clearCache();
+            card.menuOn = false;
+          }}><ha-icon icon=${clearIcon}></ha-icon> Clear cache </button>
+        </div>
+    ` : null}
 
   ${card.currentItemLink.isFile && card.fullScreenPlayerOn
     ? html`
@@ -90,7 +120,7 @@ const getPlayer = (card) => {
   const item = card.currentItemLink;
 
   return html`
-    ${item.isImage ? html`<img src="${item.url}" alt="preview" />`
+    ${item.isImage ? html`<img src="${item.url}" alt="${item.title}" />`
       : item.isVideo ? html`<video src="${item.url}" controls autoplay></video>`
       : item.isAudio ? html`<audio src="${item.url}" controls autoplay></audio>`
       : html`<a href="${item.url}" target="_blank">File not supported</a>`}
