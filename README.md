@@ -6,8 +6,6 @@
 A **Lovelace custom card** for Home Assistant that allows browsing media resources, similar to the built-in "Media" dashboard.  
 Supports **image viewing** and **video playback** with a simple user interface.
 
-*Even though the functionality of this card is almost complete, a complete debug and error handling has not yet been done. For this reason, this card should be considered a BETA version. Please report issues.* 
-
 ---
 
 ## Screenshot
