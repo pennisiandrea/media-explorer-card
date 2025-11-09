@@ -1,4 +1,7 @@
 # Media Explorer Card
+[![GitHub Release][releases-shield]][releases] [![License][license-shield]](LICENSE) [![hacs][hacs-shield]][hacs]
+
+![Project Maintenance][maintenance-shield]
 
 A **Lovelace custom card** for Home Assistant that allows browsing media resources, similar to the built-in "Media" dashboard.  
 Supports **image viewing** and **video playback** with a simple user interface.
@@ -13,8 +16,14 @@ Supports **image viewing** and **video playback** with a simple user interface.
 ![Card Screenshot](./screenshots/screenshot_2.png)
 ![Card Screenshot](./screenshots/screenshot_3.png)
 
+## Features
+* Browse media folders and files directly from your dashboard.
+* Display images and play videos inline or in fullscreen mode.
+* Smooth and fast navigation system, with optional caching for instant loading.
+
 ## Usage
 
+Example:
 ```yaml
 type: custom:media-explorer-card
 startPath: media-source://media_source/home_nas_antifurto/telecamere
@@ -30,7 +39,7 @@ grid_options:
 | Option             | Type   | Description                                       | Optional | default value |
 | ------------------ | ------ | ---------------------------------------------     | -------- | ------------- |
 | startPath          | string | Start directory                                   | false    |               |
-| title              | string | Title of the card                                 | true     |               |
+| title              | string | Title of the card                                 | true     | null          |
 | showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner      | true     | true          |
 | showNavigationInfo | bool   | Shows the path & file name in the header          | true     | true          |
 | enableCache        | bool   | Enable the caching system (see description below) | true     | true          |
@@ -38,6 +47,7 @@ grid_options:
 Use grid_options to properly size the card in your dashboard.
 
 This card implements resource caching in the browser in order to provide a fast navigation experience. It saves the entire navigation map in the background. By clicking the 3-dot icon in the top-right corner you can clear that memory, which might be useful in certain situations.
+
 ![Card Screenshot](./screenshots/screenshot_4.png)
 
 ## HACS Installation Instructions (recommended)
