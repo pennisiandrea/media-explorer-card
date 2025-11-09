@@ -35,14 +35,22 @@ jobs:
         id: tag
         run: |
           TODAY=$(date +'%Y.%m.%d')
+          echo "TODAY=$TODAY"
           LAST_TAG=$(git tag --list "${TODAY}.*" | sort -V | tail -n 1 | tr -d '[:space:]')
+          echo "LAST_TAG=$LAST_TAG"
 
           if [ -z "$LAST_TAG" ]; then
+            echo "LAST_TAG is empty"
             NEXT_TAG="${TODAY}.a"
+            echo "NEXT_TAG=$NEXT_TAG"
           else
+            echo "LAST_TAG is not empty"
             LAST_LETTER=${LAST_TAG##*.}
+            echo "LAST_LETTER=$LAST_LETTER"
             NEXT_LETTER=$(echo "$LAST_LETTER" | tr "a-y" "b-z")
+            echo "NEXT_LETTER=$NEXT_LETTER"
             NEXT_TAG="${TODAY}.${NEXT_LETTER}"
+            echo "NEXT_TAG=$NEXT_TAG"
           fi
 
           echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
