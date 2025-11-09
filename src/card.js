@@ -98,3 +98,6 @@ class MediaExplorerCard extends LitElement {
 customElements.define('media-explorer-card', MediaExplorerCard);
 
 export { MediaExplorerCard }; // This is to have JSDoc works, just for development purposes 
+
+
+//THis is a test
