@@ -36,6 +36,7 @@ export class NavigationItem {
   get title() {return this.#title}
   get mediaContentId() {return this.#mediaContentId}
   get url() {return this.#url}
+  get mediaClass() {return this.#mediaClass}
   get isDirectory() {return this.#mediaClass === "directory"}
   get isFile() {return !this.isDirectory}
   get isVideo() {return this.#mediaClass === "video"}
@@ -46,9 +47,20 @@ export class NavigationItem {
     if (!this.parent) return 0;
     return this.parent.children.indexOf(this);
   }
-  get siblingMaxIndex() {
-    if (this.parent?.children.length > 0) return this.parent.children.length - 1;
-    return 0;
+  get firstFileChildIndex() {
+    if (this.children.length == 0) return null;
+
+    const returnVal = this.children.findIndex(item => item.isFile);
+    if (returnVal == -1) return null;
+    return returnVal;
+  }
+  get lastFileChildIndex() {
+    if (this.children.length == 0) return null;
+
+    for (let i = this.children.length - 1; i >= 0; i--) {
+      if (this.children[i].isFile) return i;
+    }
+    return null;
   }
   get lastUpdateDT() {return this.#lastUpdateDT}
 
@@ -64,20 +76,37 @@ export class NavigationItem {
   }
 
   async getURL() {
-    let changed = false;
-    if (!this.#url) {
+    /*  returnVal
+    0 = nothing changed
+    1 = something changed
+    99 = error      
+    */
+    let returnVal = 0;
+    try {
       const result = await this.hass.callWS({ 
         type: "media_source/resolve_media", 
         media_content_id: this.#mediaContentId
       });
+
       this.#url = result.url;
-      changed = true;
+      returnVal = 1;
+
+    } catch (err) {
+      console.error("Failed to get url:", err);
+      this.#url = null;
+      returnVal = 99;
     }
-    return changed;
+    
+    return returnVal;
   }
 
   async loadChildren() {
-    let changed = false;
+    /*  returnVal
+    0 = nothing changed
+    1 = something changed
+    99 = error      
+    */
+    let returnVal = 0;
     try {
       const { children: updatedChildren = []} = await this.hass.callWS({ 
           type: "media_source/browse_media", 
@@ -88,22 +117,33 @@ export class NavigationItem {
       const updatedChildrenContentIDs = updatedChildren.map(item => item.media_content_id);
 
       // Removed elements
-      if (this.children.some(item => !updatedChildrenContentIDs.includes(item.mediaContentId))) changed = true;
+      if (this.children.some(item => !updatedChildrenContentIDs.includes(item.mediaContentId))) returnVal = 1;
 
       // Rebuild children
-      this.children = updatedChildren.map(item => {
+      const newChildren = updatedChildren.map(item => {
         const existing = currentChildrenMap.get(item.media_content_id);
-        if (existing) return existing;
-        changed = true;
-        return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);          
+        if (!existing ||
+            existing.title !== item.title ||
+            existing.mediaClass !== item.media_class) {
+              returnVal = 1;
+              return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);
+            }
+        return existing;       
       });
+
+      const sameOrder = this.children.length === newChildren.length &&
+                        this.children.every((child, idx) => child.mediaContentId === newChildren[idx].mediaContentId);
+      if (!sameOrder) returnVal = 1;
+      
+      this.children = newChildren;
       this.#lastUpdateDT = Date.now();
 
     } catch (err) {
       console.error("Failed to load children:", err);
+      returnVal = 99;
     }
     
-    return changed;
+    return returnVal;
   }
 
   clearURL () {
@@ -140,6 +180,9 @@ export class NavigationMap extends EventTarget {
     this.#Init();
   }
 
+  // Getters
+  get initDone() {return this.#initDone}
+
   // Instance methods
   navigateBackToRoot() {
     if (!this.#initDone) return null;
@@ -170,17 +213,61 @@ export class NavigationMap extends EventTarget {
       }
     }
   }
-  openSibling(index) {
-    if (!this.#initDone) return null;
-    if (!this.loading) {
-      if (index >= 0 && index < this.currentItem.parent.children.length) {
-        this.currentItem = this.currentItem.parent.children[index];      
-        this.#openCurrentItem(); 
+  openNextSibling() {
+    if (!this.#initDone || this.loading || !this.currentItem?.parent) return null;
+
+    const siblings = this.currentItem.parent.children;
+    if (!siblings?.length) return;
+
+    const currentIndex = this.currentItem.siblingIndex;
+    let sibling = null;    
+    for (let i = currentIndex + 1; i < siblings.length; i ++){
+      if (siblings[i].isFile){
+        sibling = siblings[i];
+        break;
       }
     }
+
+    if (!sibling) sibling = siblings.find(item => item.isFile);
+
+    if (sibling && sibling !== this.currentItem) {
+      this.currentItem = sibling;    
+      this.#openCurrentItem(); 
+    }
+    
+  }
+  openPrevSibling() {
+    if (!this.#initDone || this.loading || !this.currentItem?.parent) return;
+
+    const siblings = this.currentItem.parent.children;
+    if (!siblings?.length) return;
+
+    const currentIndex = this.currentItem.siblingIndex;
+    let sibling = null;
+    for (let i = currentIndex - 1; i >= 0; i--){
+      if (siblings[i].isFile){
+        sibling = siblings[i];
+        break;
+      }
+    }
+
+    if (!sibling){
+      for (let i = siblings.length - 1; i >= 0; i--) {
+        if (siblings[i].isFile) {
+          sibling = siblings[i];
+          break;
+        }
+      }
+    }
+
+    if (sibling && sibling !== this.currentItem) {
+      this.currentItem = sibling;    
+      this.#openCurrentItem(); 
+    }
+    
   }
   clearCache() {
-    if (!this.#initDone) return null;
+    if (!this.#initDone || !this.#cacheManager) return null;
     this.#cacheManager.clearCache(this.#cacheKey);
     this.currentItem = this.rootItem;
     this.rootItem.children = [];
@@ -190,10 +277,12 @@ export class NavigationMap extends EventTarget {
   // Private methods
   async #Init() {
 
-    let cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
+    let cachedData = null;
+    if (this.#cacheManager) cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
+
     if (!cachedData) this.rootItem = new NavigationItem(this.hass,null,"root","directory",this.#startPath);
     else this.rootItem = NavigationItem.fromJSON(this.hass,cachedData);
-    
+
     this.rootItem.clearURL();
 
     this.currentItem = this.rootItem;
@@ -206,21 +295,26 @@ export class NavigationMap extends EventTarget {
       this.#loadCurrentItemChildren();  
     }    
     else {
-      this.currentItem.getURL().then(() => {
-        this.#sendEventCurrentItemChanged();
+      this.currentItem.getURL().then((returnVal) => {
+        if (returnVal == 1) this.#sendEventCurrentItemChanged();
+        if (returnVal == 99) this.navigateBack();
       });
     }
   }
   #saveMapOnCache() {
+    if (!this.#cacheManager) return;
     this.#cacheManager.saveOnCache(this.#cacheKey, this.rootItem.toJSON());
   }
   #loadCurrentItemChildren() {
     this.loading = true;
-    this.currentItem.loadChildren().then(changed => {
+    this.currentItem.loadChildren().then(returnVal => {
       this.loading = false;
-      if(changed) {
+      if(returnVal == 1) {
         this.#sendEventCurrentItemChanged();
         this.#saveMapOnCache();
+      }
+      else if(returnVal == 99) {
+        this.navigateBack();
       }
     });
   }

@@ -77,6 +77,9 @@ export const cardStyle = css`
     grid-row: 2;
     margin: 5px 5px 0px 5px;
   }
+  #mec-header-info-area[hidden] {
+    display: none;
+  }
 
   .mec-header-txt-info {
     color: var(--secondary-text-color);
@@ -209,6 +212,9 @@ export const cardStyle = css`
   #mec-menu-button {
     border: none;
   }
+  #mec-menu-button[hidden] {
+    display: none;
+  }
   .mec-menu-overlay {
     position: fixed;
     top: 0;
@@ -243,7 +249,9 @@ export const cardStyle = css`
     align-items:center;
     gap: 6px;
   }
-
+  .mec-menu-item[hidden]{
+    display: none;
+  }
   .mec-menu-item:hover {
     background: rgba(0, 0, 0, 0.08);
   }

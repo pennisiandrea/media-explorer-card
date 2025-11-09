@@ -29,7 +29,7 @@ export class CacheManager {
       return data;
     } catch (err) {
       console.warn("Error reading cache:", err);
-      await this.clearCache(this.#tableName,dataKey);
+      await this.clearCache(dataKey);
       return null;
     }
   }
@@ -37,7 +37,6 @@ export class CacheManager {
     try {
       const db = await this.#getDB(this.#tableName);
       await db.delete(this.#tableName, dataKey);
-      console.warn(`[Cache] Cleared ${dataKey}`);
     } catch (err) {
       console.error("Error clearing cache:", err);
     }

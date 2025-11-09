@@ -45,10 +45,15 @@ class MediaExplorerCard extends LitElement {
   get hass() {return this._hass}
 
   setConfig(config) { 
-    this.config = config; 
+    if (!config) throw new Error("No configuration provided");
+    if (!config.startPath) throw new TypeError("Missing startPath");
 
-    // Check parameters
-    if (!this.config.startPath) throw new TypeError("Missing startPath");
+    this.config = {
+      showMenuButton: true,
+      showNavigationInfo: true,
+      enableCache: true,
+      ...config,
+    };
 
     if (this._hass) this.#initCard();
   }
@@ -64,8 +69,13 @@ class MediaExplorerCard extends LitElement {
       await this.cacheManager.clearCache(this.#cacheMapKey);
       await this.cacheManager.saveOnCache(this.#cacheVersionKey,this.#version);
     }
-    
-    this.navigationMap = new NavigationMap(this._hass,this.cacheManager,this.#cacheMapKey,this.config.startPath);
+
+    if (!this.config.enableCache){
+      await this.cacheManager.clearCache(this.#cacheMapKey);
+      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath);
+    }
+    else this.navigationMap = new NavigationMap(this._hass,this.cacheManager,this.#cacheMapKey,this.config.startPath);
+
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;
       this.requestUpdate();
@@ -80,7 +90,7 @@ class MediaExplorerCard extends LitElement {
   }
 
   render() { 
-    if (!this.#initDone) return null;
+    if (!this.#initDone || !this.navigationMap.initDone) return null;
     return renderTemplate(this); 
   }
 }

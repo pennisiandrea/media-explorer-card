@@ -53,20 +53,20 @@ const renderTemplate = (card) => x`
             card.fullScreenPlayerOn = false;
           }}"><ha-icon icon=${closeIcon}></button>
           <button class="mec-button" @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
-          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= 0}" @click=${() => card.navigationMap.openSibling(card.currentItemLink.siblingIndex - 1)}><ha-icon icon=${prevIcon}></button>
-          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.siblingMaxIndex}" @click=${() => card.navigationMap.openSibling(card.currentItemLink.siblingIndex + 1)}><ha-icon icon=${nextIcon}></button>
+          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
+          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
         </div>
 
         <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
         
-        <div id="mec-header-info-area">
+        <div id="mec-header-info-area" ?hidden="${!card.config.showNavigationInfo}">
           <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isFile)}">${card.currentItemLink.title}</div>
           <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && !card.currentItemLink.isRoot)}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
-          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && card.currentItemLink.isRoot)}">${card.currentItemLink.mediaContentId}</div>
+          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && card.currentItemLink.isRoot)}">./</div>
         </div>
         
         <div id="mec-header-right-area">
-          <button id="mec-menu-button" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
+          <button id="mec-menu-button" ?hidden="${!card.config.showMenuButton}" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
         </div>
       </div>
       
@@ -76,9 +76,8 @@ const renderTemplate = (card) => x`
           ${card.currentItemLink.children.length > 0 ? getItemList(card) : card.navigationMap.loading ? x`<div class="loading">Loading...</div>` : x`<div class="p-4">No files found.</div>`}
         </div>
 
-        <div id="mec-player-content" ?hidden="${!card.currentItemLink.isFile}">
-          ${card.navigationMap.loading ? x`<div class="loading">Loading...</div>` :
-            !card.fullScreenPlayerOn ? getPlayer(card) : x`<div>I'm confused</div>`}
+        <div id="mec-player-content" ?hidden="${!card.currentItemLink.isFile || card.fullScreenPlayerOn}">
+          ${card.navigationMap.loading && !card.fullScreenPlayerOn ? x`<div class="loading">Loading...</div>` : getPlayer(card)}
         </div>
 
       </div>
@@ -97,7 +96,7 @@ const renderTemplate = (card) => x`
             card.navigationMap.reloadCurrentItem();
             card.menuOn = false;
           }}><ha-icon icon=${refreshIcon}></ha-icon> Refresh </button>
-          <button class="mec-menu-item" @click=${() => {
+          <button class="mec-menu-item" ?hidden="${!card.config.enableCache}" @click=${() => {
             card.navigationMap.clearCache();
             card.menuOn = false;
           }}><ha-icon icon=${clearIcon}></ha-icon> Clear cache </button>
@@ -121,9 +120,9 @@ const getItemList = (card) => {
     ${card.currentItemLink.children.map((item,index) => x`
       <div class="mec-browser-content-item" @click="${() => {card.navigationMap.openChild(index);}}">
         <ha-icon class="mec-browser-content-item-icon" icon=${
-          item.isDirectory ? folderIcon 
-            : item.isImage ? imageIcon 
-            : item.isVideo ? videoIcon 
+          item?.isDirectory ? folderIcon 
+            : item?.isImage ? imageIcon 
+            : item?.isVideo ? videoIcon 
             : fileIcon
           }>
         </ha-icon>
@@ -144,9 +143,9 @@ const getPlayer = (card) => {
   const item = card.currentItemLink;
 
   return x`
-    ${item.isImage ? x`<img src="${item.url}" alt="${item.title}" />`
-      : item.isVideo ? x`<video src="${item.url}" controls autoplay></video>`
-      : item.isAudio ? x`<audio src="${item.url}" controls autoplay></audio>`
+    ${item.isImage ? x`<img src="${item.url}" @error=${() => card.navigationMap.navigateBack()} alt="${item.title}" />`
+      : item.isVideo ? x`<video src="${item.url}" @error=${() => card.navigationMap.navigateBack()} controls autoplay></video>`
+      : item.isAudio ? x`<audio src="${item.url}" @error=${() => card.navigationMap.navigateBack()} controls autoplay></audio>`
       : x`<a href="${item.url}" target="_blank">File not supported</a>`}
   `;
 };
@@ -234,6 +233,9 @@ const cardStyle = i$3`
     grid-column: 1 / -1;
     grid-row: 2;
     margin: 5px 5px 0px 5px;
+  }
+  #mec-header-info-area[hidden] {
+    display: none;
   }
 
   .mec-header-txt-info {
@@ -367,6 +369,9 @@ const cardStyle = i$3`
   #mec-menu-button {
     border: none;
   }
+  #mec-menu-button[hidden] {
+    display: none;
+  }
   .mec-menu-overlay {
     position: fixed;
     top: 0;
@@ -401,7 +406,9 @@ const cardStyle = i$3`
     align-items:center;
     gap: 6px;
   }
-
+  .mec-menu-item[hidden]{
+    display: none;
+  }
   .mec-menu-item:hover {
     background: rgba(0, 0, 0, 0.08);
   }
@@ -495,6 +502,7 @@ class NavigationItem {
   get title() {return this.#title}
   get mediaContentId() {return this.#mediaContentId}
   get url() {return this.#url}
+  get mediaClass() {return this.#mediaClass}
   get isDirectory() {return this.#mediaClass === "directory"}
   get isFile() {return !this.isDirectory}
   get isVideo() {return this.#mediaClass === "video"}
@@ -505,9 +513,20 @@ class NavigationItem {
     if (!this.parent) return 0;
     return this.parent.children.indexOf(this);
   }
-  get siblingMaxIndex() {
-    if (this.parent?.children.length > 0) return this.parent.children.length - 1;
-    return 0;
+  get firstFileChildIndex() {
+    if (this.children.length == 0) return null;
+
+    const returnVal = this.children.findIndex(item => item.isFile);
+    if (returnVal == -1) return null;
+    return returnVal;
+  }
+  get lastFileChildIndex() {
+    if (this.children.length == 0) return null;
+
+    for (let i = this.children.length - 1; i >= 0; i--) {
+      if (this.children[i].isFile) return i;
+    }
+    return null;
   }
   get lastUpdateDT() {return this.#lastUpdateDT}
 
@@ -523,20 +542,37 @@ class NavigationItem {
   }
 
   async getURL() {
-    let changed = false;
-    if (!this.#url) {
+    /*  returnVal
+    0 = nothing changed
+    1 = something changed
+    99 = error      
+    */
+    let returnVal = 0;
+    try {
       const result = await this.hass.callWS({ 
         type: "media_source/resolve_media", 
         media_content_id: this.#mediaContentId
       });
+
       this.#url = result.url;
-      changed = true;
+      returnVal = 1;
+
+    } catch (err) {
+      console.error("Failed to get url:", err);
+      this.#url = null;
+      returnVal = 99;
     }
-    return changed;
+    
+    return returnVal;
   }
 
   async loadChildren() {
-    let changed = false;
+    /*  returnVal
+    0 = nothing changed
+    1 = something changed
+    99 = error      
+    */
+    let returnVal = 0;
     try {
       const { children: updatedChildren = []} = await this.hass.callWS({ 
           type: "media_source/browse_media", 
@@ -547,22 +583,33 @@ class NavigationItem {
       const updatedChildrenContentIDs = updatedChildren.map(item => item.media_content_id);
 
       // Removed elements
-      if (this.children.some(item => !updatedChildrenContentIDs.includes(item.mediaContentId))) changed = true;
+      if (this.children.some(item => !updatedChildrenContentIDs.includes(item.mediaContentId))) returnVal = 1;
 
       // Rebuild children
-      this.children = updatedChildren.map(item => {
+      const newChildren = updatedChildren.map(item => {
         const existing = currentChildrenMap.get(item.media_content_id);
-        if (existing) return existing;
-        changed = true;
-        return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);          
+        if (!existing ||
+            existing.title !== item.title ||
+            existing.mediaClass !== item.media_class) {
+              returnVal = 1;
+              return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);
+            }
+        return existing;       
       });
+
+      const sameOrder = this.children.length === newChildren.length &&
+                        this.children.every((child, idx) => child.mediaContentId === newChildren[idx].mediaContentId);
+      if (!sameOrder) returnVal = 1;
+      
+      this.children = newChildren;
       this.#lastUpdateDT = Date.now();
 
     } catch (err) {
       console.error("Failed to load children:", err);
+      returnVal = 99;
     }
     
-    return changed;
+    return returnVal;
   }
 
   clearURL () {
@@ -599,6 +646,9 @@ class NavigationMap extends EventTarget {
     this.#Init();
   }
 
+  // Getters
+  get initDone() {return this.#initDone}
+
   // Instance methods
   navigateBackToRoot() {
     if (!this.#initDone) return null;
@@ -629,17 +679,61 @@ class NavigationMap extends EventTarget {
       }
     }
   }
-  openSibling(index) {
-    if (!this.#initDone) return null;
-    if (!this.loading) {
-      if (index >= 0 && index < this.currentItem.parent.children.length) {
-        this.currentItem = this.currentItem.parent.children[index];      
-        this.#openCurrentItem(); 
+  openNextSibling() {
+    if (!this.#initDone || this.loading || !this.currentItem?.parent) return null;
+
+    const siblings = this.currentItem.parent.children;
+    if (!siblings?.length) return;
+
+    const currentIndex = this.currentItem.siblingIndex;
+    let sibling = null;    
+    for (let i = currentIndex + 1; i < siblings.length; i ++){
+      if (siblings[i].isFile){
+        sibling = siblings[i];
+        break;
       }
     }
+
+    if (!sibling) sibling = siblings.find(item => item.isFile);
+
+    if (sibling && sibling !== this.currentItem) {
+      this.currentItem = sibling;    
+      this.#openCurrentItem(); 
+    }
+    
+  }
+  openPrevSibling() {
+    if (!this.#initDone || this.loading || !this.currentItem?.parent) return;
+
+    const siblings = this.currentItem.parent.children;
+    if (!siblings?.length) return;
+
+    const currentIndex = this.currentItem.siblingIndex;
+    let sibling = null;
+    for (let i = currentIndex - 1; i >= 0; i--){
+      if (siblings[i].isFile){
+        sibling = siblings[i];
+        break;
+      }
+    }
+
+    if (!sibling){
+      for (let i = siblings.length - 1; i >= 0; i--) {
+        if (siblings[i].isFile) {
+          sibling = siblings[i];
+          break;
+        }
+      }
+    }
+
+    if (sibling && sibling !== this.currentItem) {
+      this.currentItem = sibling;    
+      this.#openCurrentItem(); 
+    }
+    
   }
   clearCache() {
-    if (!this.#initDone) return null;
+    if (!this.#initDone || !this.#cacheManager) return null;
     this.#cacheManager.clearCache(this.#cacheKey);
     this.currentItem = this.rootItem;
     this.rootItem.children = [];
@@ -649,10 +743,12 @@ class NavigationMap extends EventTarget {
   // Private methods
   async #Init() {
 
-    let cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
+    let cachedData = null;
+    if (this.#cacheManager) cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
+
     if (!cachedData) this.rootItem = new NavigationItem(this.hass,null,"root","directory",this.#startPath);
     else this.rootItem = NavigationItem.fromJSON(this.hass,cachedData);
-    
+
     this.rootItem.clearURL();
 
     this.currentItem = this.rootItem;
@@ -665,21 +761,26 @@ class NavigationMap extends EventTarget {
       this.#loadCurrentItemChildren();  
     }    
     else {
-      this.currentItem.getURL().then(() => {
-        this.#sendEventCurrentItemChanged();
+      this.currentItem.getURL().then((returnVal) => {
+        if (returnVal == 1) this.#sendEventCurrentItemChanged();
+        if (returnVal == 99) this.navigateBack();
       });
     }
   }
   #saveMapOnCache() {
+    if (!this.#cacheManager) return;
     this.#cacheManager.saveOnCache(this.#cacheKey, this.rootItem.toJSON());
   }
   #loadCurrentItemChildren() {
     this.loading = true;
-    this.currentItem.loadChildren().then(changed => {
+    this.currentItem.loadChildren().then(returnVal => {
       this.loading = false;
-      if(changed) {
+      if(returnVal == 1) {
         this.#sendEventCurrentItemChanged();
         this.#saveMapOnCache();
+      }
+      else if(returnVal == 99) {
+        this.navigateBack();
       }
     });
   }
@@ -1018,7 +1119,7 @@ class CacheManager {
       return data;
     } catch (err) {
       console.warn("Error reading cache:", err);
-      await this.clearCache(this.#tableName,dataKey);
+      await this.clearCache(dataKey);
       return null;
     }
   }
@@ -1026,7 +1127,6 @@ class CacheManager {
     try {
       const db = await this.#getDB(this.#tableName);
       await db.delete(this.#tableName, dataKey);
-      console.warn(`[Cache] Cleared ${dataKey}`);
     } catch (err) {
       console.error("Error clearing cache:", err);
     }
@@ -1083,10 +1183,15 @@ class MediaExplorerCard extends i {
   get hass() {return this._hass}
 
   setConfig(config) { 
-    this.config = config; 
+    if (!config) throw new Error("No configuration provided");
+    if (!config.startPath) throw new TypeError("Missing startPath");
 
-    // Check parameters
-    if (!this.config.startPath) throw new TypeError("Missing startPath");
+    this.config = {
+      showMenuButton: true,
+      showNavigationInfo: true,
+      enableCache: true,
+      ...config,
+    };
 
     if (this._hass) this.#initCard();
   }
@@ -1102,8 +1207,13 @@ class MediaExplorerCard extends i {
       await this.cacheManager.clearCache(this.#cacheMapKey);
       await this.cacheManager.saveOnCache(this.#cacheVersionKey,this.#version);
     }
-    
-    this.navigationMap = new NavigationMap(this._hass,this.cacheManager,this.#cacheMapKey,this.config.startPath);
+
+    if (!this.config.enableCache){
+      await this.cacheManager.clearCache(this.#cacheMapKey);
+      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath);
+    }
+    else this.navigationMap = new NavigationMap(this._hass,this.cacheManager,this.#cacheMapKey,this.config.startPath);
+
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;
       this.requestUpdate();
@@ -1118,7 +1228,7 @@ class MediaExplorerCard extends i {
   }
 
   render() { 
-    if (!this.#initDone) return null;
+    if (!this.#initDone || !this.navigationMap.initDone) return null;
     return renderTemplate(this); 
   }
 }

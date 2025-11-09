@@ -1,0 +1,6 @@
+{
+  "name": "Media Explorer Card",
+  "filename": "media-explorer-card.js",
+  "hide_default_branch": true,
+  "homeassistant": "2024.6.0"
+}
