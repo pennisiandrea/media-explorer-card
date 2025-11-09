@@ -2,11 +2,10 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'release'
 
 permissions: {}
-
 
 jobs:
   release:
