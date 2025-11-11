@@ -1,10 +1,13 @@
-export class NavigationItem {
+export class NavigationItem extends EventTarget {
   // Private fields
   #title = "";
   #mediaClass = "";
   #mediaContentId = "";
   #url = null;
   #lastUpdateDT = null;
+  #previewImage = null;
+  #enablePreview = null;
+  loadChildrenPreview = null;
 
   // Public fields
   /** @type {Array< NavigationItem >} */
@@ -14,20 +17,23 @@ export class NavigationItem {
   hass;
 
   // Constructor
-  constructor(hass,parent,title,mediaClass,mediaContentId,lastUpdateDT=null) {
+  constructor(hass,parent,title,mediaClass,mediaContentId,lastUpdateDT=null,previewImage,enablePreview) {
+    super();
     this.parent = parent;
     this.#title = title;
     this.#mediaClass = mediaClass;
     this.#mediaContentId = mediaContentId;
     this.hass = hass;
     this.#lastUpdateDT = lastUpdateDT;
+    this.#enablePreview = enablePreview;
+    if (this.#enablePreview) this.#previewImage = previewImage; 
   }
 
   // Static methods
-  static fromJSON(hass, data, parent = null) {
-    const newItem = new NavigationItem(hass,parent,data.title,data.mediaClass,data.mediaContentId,data.lastUpdateDT);
+  static fromJSON(hass, data, parent = null, enablePreview) {
+    const newItem = new NavigationItem(hass,parent,data.title,data.mediaClass,data.mediaContentId,data.lastUpdateDT,null,enablePreview);
     if (Array.isArray(data.children)) 
-      newItem.children.push(...data.children.map(childData => NavigationItem.fromJSON(hass,childData,newItem)));
+      newItem.children.push(...data.children.map(childData => NavigationItem.fromJSON(hass,childData,newItem,enablePreview)));
     
     return newItem;
   }
@@ -43,6 +49,8 @@ export class NavigationItem {
   get isImage() {return this.#mediaClass === "image"}
   get isAudio() {return this.#mediaClass === "audio"}
   get isRoot() {return this.parent == null}
+  get previewImage() { return this.#previewImage; }
+  get enablePreview() { return this.#enablePreview; }
   get siblingIndex() {
     if (!this.parent) return 0;
     return this.parent.children.indexOf(this);
@@ -71,6 +79,7 @@ export class NavigationItem {
       mediaClass: this.#mediaClass,
       mediaContentId: this.#mediaContentId,
       lastUpdateDT: this.#lastUpdateDT,
+      //previewImage: this.#previewImage,
       children: this.children.map(child => child.toJSON()),
     }
   }
@@ -126,16 +135,20 @@ export class NavigationItem {
             existing.title !== item.title ||
             existing.mediaClass !== item.media_class) {
               returnVal = 1;
-              return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id);
+              return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id,null,null,this.enablePreview);
             }
         return existing;       
       });
-
+      /*
       const sameOrder = this.children.length === newChildren.length &&
                         this.children.every((child, idx) => child.mediaContentId === newChildren[idx].mediaContentId);
       if (!sameOrder) returnVal = 1;
-      
+      */
+
       this.children = newChildren;
+
+      if (this.#enablePreview) this.#loadChildrenPreviewImage();
+
       this.#lastUpdateDT = Date.now();
 
     } catch (err) {
@@ -150,6 +163,117 @@ export class NavigationItem {
     this.#url = null;
     for (const child of this.children) child.clearURL();
   }
+
+  async #loadChildrenPreviewImage() {
+    //const t0 = performance.now();
+    
+    this.loadChildrenPreview = true;
+    const tasks = [];
+    const maxChunkSize = 50;
+
+    let childInTheChunk = 0;
+    let chunkSize = 1;
+
+    for (let childIndex = 0; childIndex < this.children.length; childIndex++) {
+      if (!this.children[childIndex].previewImage && (this.children[childIndex].isVideo || this.children[childIndex].isImage)) {
+
+        tasks.push(this.children[childIndex].getPreviewImage());
+        childInTheChunk = childInTheChunk + 1;
+        if (childInTheChunk >= chunkSize) {
+          await Promise.all(tasks);
+          if (!this.loadChildrenPreview) break;
+          this.#sendEventItemPreviewReady();
+          tasks.length = 0;
+          childInTheChunk = 0;
+          chunkSize = Math.min(chunkSize*2,maxChunkSize);
+          await new Promise(requestAnimationFrame);
+        }
+      }
+    }
+    this.loadChildrenPreview = false;
+
+    //const t1 = performance.now();
+    //console.log(`Tempo di esecuzione ${(t1-t0).toFixed(2)} ms`);
+  }
+
+  stopOperations() {
+    this.loadChildrenPreview = false;
+  }
+
+  async getPreviewImage() {
+    if (!this.isImage && !this.isVideo) {
+      this.#previewImage = null;
+      return;
+    };
+
+    try {
+      await this.getURL();
+      if (!this.#url) return;
+      
+      const maxSize = 250;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      
+      if (this.isImage) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = this.#url;
+        await img.decode();
+
+        const scale = Math.min(maxSize / img.width, maxSize / img.height);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+      else if (this.isVideo) {
+        const video = document.createElement("video");
+        video.crossOrigin = "anonymous";
+        video.src = this.#url;
+        video.muted = true;
+        video.playsInline = true;
+
+        await new Promise((resolve, reject) => {
+          video.addEventListener("loadeddata", resolve, { once: true });
+          video.addEventListener("error", reject, { once: true });
+        });
+
+        video.currentTime = Math.min(1, video.duration / 2);
+        
+        await new Promise((resolve, reject) => {
+          video.addEventListener("seeked", resolve, { once: true });
+          video.addEventListener("error", reject, { once: true });
+        });
+        
+        const scale = Math.min(maxSize / video.videoWidth, maxSize / video.videoHeight);
+        canvas.width = video.videoWidth * scale;
+        canvas.height = video.videoHeight * scale;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
+      else return;
+
+      this.#previewImage = canvas.toDataURL("image/jpeg", 1);
+      return;
+
+    } catch (err) {
+      console.warn("Preview generation failed:", err);
+      
+      this.#previewImage = null;
+      return;
+    }
+
+  }
+
+  #sendEventItemPreviewReady(){
+    this.dispatchEvent(new CustomEvent("itemPreviewReady", {
+        detail: true
+    }));
+  }
+
+  resetPreviewImage() {
+    this.#previewImage = null;
+  }
+  
 }
 
 export class NavigationMap extends EventTarget {
@@ -159,6 +283,8 @@ export class NavigationMap extends EventTarget {
   #cacheKey = "";
   #initDone = false;
   #startPath = "";
+  #enablePreview = null;
+  #savePreview = null;
 
   // Public fields
   /** @type {NavigationItem} */
@@ -169,13 +295,15 @@ export class NavigationMap extends EventTarget {
   loading=false;
 
   // Constructor
-  constructor(hass, cacheManager, cacheKey, startPath) { 
+  constructor(hass, cacheManager, cacheKey, startPath, enablePreview, savePreview) { 
     super();
     
     this.hass = hass;
     this.#cacheManager = cacheManager;
     this.#cacheKey = cacheKey;
     this.#startPath = startPath;
+    this.#enablePreview = enablePreview;
+    this.#savePreview = savePreview;
 
     this.#Init();
   }
@@ -187,6 +315,8 @@ export class NavigationMap extends EventTarget {
   navigateBackToRoot() {
     if (!this.#initDone) return null;
     if (!this.loading) {
+      this.currentItem.stopOperations();
+      if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
       this.currentItem = this.rootItem;
       this.#openCurrentItem(); 
     }
@@ -194,6 +324,8 @@ export class NavigationMap extends EventTarget {
   navigateBack() {
     if (!this.#initDone) return null;
     if (!this.loading) {
+      this.currentItem.stopOperations();
+      if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
       this.currentItem = this.currentItem.parent;
       this.#openCurrentItem(); 
     }
@@ -201,6 +333,8 @@ export class NavigationMap extends EventTarget {
   reloadCurrentItem() {
     if (!this.#initDone) return null;
     if (!this.loading) {
+      this.currentItem.stopOperations();
+      if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
       this.#openCurrentItem(); 
     }
   }
@@ -208,6 +342,7 @@ export class NavigationMap extends EventTarget {
     if (!this.#initDone) return null;
     if (!this.loading) {
       if (index >= 0 && index < this.currentItem.children.length) {
+        this.currentItem.stopOperations();
         this.currentItem = this.currentItem.children[index];      
         this.#openCurrentItem(); 
       }
@@ -231,6 +366,7 @@ export class NavigationMap extends EventTarget {
     if (!sibling) sibling = siblings.find(item => item.isFile);
 
     if (sibling && sibling !== this.currentItem) {
+      this.currentItem.stopOperations();
       this.currentItem = sibling;    
       this.#openCurrentItem(); 
     }
@@ -261,14 +397,16 @@ export class NavigationMap extends EventTarget {
     }
 
     if (sibling && sibling !== this.currentItem) {
+      this.currentItem.stopOperations();
       this.currentItem = sibling;    
       this.#openCurrentItem(); 
     }
     
   }
-  clearCache() {
+  clearMemory() {
     if (!this.#initDone || !this.#cacheManager) return null;
     this.#cacheManager.clearCache(this.#cacheKey);
+    this.currentItem.stopOperations();
     this.currentItem = this.rootItem;
     this.rootItem.children = [];
     this.#openCurrentItem();
@@ -280,8 +418,8 @@ export class NavigationMap extends EventTarget {
     let cachedData = null;
     if (this.#cacheManager) cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
 
-    if (!cachedData) this.rootItem = new NavigationItem(this.hass,null,"root","directory",this.#startPath);
-    else this.rootItem = NavigationItem.fromJSON(this.hass,cachedData);
+    if (!cachedData) this.rootItem = new NavigationItem(this.hass,null,"root","directory",this.#startPath,null,null,this.#enablePreview);
+    else this.rootItem = NavigationItem.fromJSON(this.hass,cachedData,null,this.#enablePreview);
 
     this.rootItem.clearURL();
 
@@ -289,8 +427,15 @@ export class NavigationMap extends EventTarget {
     this.#openCurrentItem(); 
     this.#initDone = true;
   }
+  #subscribeToCurrentItemEvents(){
+    //itemPreviewReady
+    this.currentItem.addEventListener("itemPreviewReady", () => {
+      this.#sendEventCurrentItemChildrenPreviewChanged();
+    });
+  }
   #openCurrentItem() {
-    if (this.currentItem.isDirectory) {
+    if (this.currentItem.isDirectory) {      
+      if(this.#enablePreview) this.#subscribeToCurrentItemEvents();
       this.#sendEventCurrentItemChanged();
       this.#loadCurrentItemChildren();  
     }    
@@ -318,18 +463,18 @@ export class NavigationMap extends EventTarget {
       }
     });
   }
+  #resetCurrentItemChildrenPreviewImages() {
+    for(const child of this.currentItem.children) child.resetPreviewImage();
+  }
   #sendEventCurrentItemChanged(){
     this.dispatchEvent(new CustomEvent("currentItemChanged", {
         detail: this.currentItem
     }));
   }
-  #findOldestDirectory(thisDirectory, oldestDirectory) {
-    if (oldestDirectory == null || thisDirectory.lastUpdateDT < oldestDirectory.lastUpdateDT) oldestDirectory = thisDirectory;
-
-    for(const child of thisDirectory.children) {
-      if (child.isDirectory) oldestDirectory = this.#findOldestDirectory(child,oldestDirectory);
-    }
-
-    return oldestDirectory;
+  #sendEventCurrentItemChildrenPreviewChanged(){
+    this.dispatchEvent(new CustomEvent("currentItemChildrenPreviewChanged", {
+        detail: null
+    }));
   }
+
 }

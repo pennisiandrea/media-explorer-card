@@ -41,12 +41,21 @@ grid_options:
 | showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner      | true     | true          |
 | showNavigationInfo | bool   | Shows the path & file name in the header          | true     | true          |
 | enableCache        | bool   | Enable the caching system (see description below) | true     | true          |
+| enablePreview      | bool   | Enable the thumbnail load of images and videos    | true     | true          |
+| savePreview        | bool   | Saves the thumbnail in the volatile memory        | true     | true          |
+| itemSize           | string | Size of the folders/files icons or previews       | true     | "200px"       |
 
 Use grid_options to properly size the card in your dashboard.
 
-This card implements resource caching in the browser in order to provide a fast navigation experience. It saves the entire navigation map in the background. By clicking the 3-dot icon in the top-right corner you can clear that memory, which might be useful in certain situations.
+### Cache
+If enableCache option is enabled, it records a navigation map in the non-volatile memory of the browser. This provides the fastest navigation experience for those folders you have already visited. To erase the saved navigation map you can use the menu button:
 
 ![Card Screenshot](./screenshots/screenshot_4.png)
+
+### Thumbnails
+With enablePreview option enabled, the card loads thumbnails for images and videos files. 
+With savePreview option enabled, thumbnails are saved in the volatile memory of the browser. This means that thumbnails already loaded will be instantly available and data will be completely erased with the next webpage reload. Thumbnails are never saved in the non-volatile memory.
+
 
 ## HACS Installation Instructions (recommended)
 

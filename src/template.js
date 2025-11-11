@@ -1,4 +1,5 @@
 import { html } from 'lit';
+import { repeat } from 'lit/directives/repeat.js';
 
 const folderIcon = "mdi:folder";
 const fileIcon = "mdi:file";
@@ -16,103 +17,135 @@ const clearIcon = "mdi:trash-can";
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 export const renderTemplate = (card) => html`
-  <ha-card>
-    <div id="mec-card">
-      
-      <div id="mec-header">
-        <div id="mec-header-browser-buttons" ?hidden="${card.currentItemLink.isFile}">
-          <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => card.navigationMap.navigateBack()}"><ha-icon icon=${backIcon}></button>
-        </div>
-        <div id="mec-header-player-buttons" ?hidden="${!card.currentItemLink.isFile}">
-          <button class="mec-button" @click="${() => {
-            card.navigationMap.navigateBack();
-            card.fullScreenPlayerOn = false;
-          }}"><ha-icon icon=${closeIcon}></button>
-          <button class="mec-button" @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
-          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
-          <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
-        </div>
-
-        <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
-        
-        <div id="mec-header-info-area" ?hidden="${!card.config.showNavigationInfo}">
-          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isFile)}">${card.currentItemLink.title}</div>
-          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && !card.currentItemLink.isRoot)}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
-          <div class="mec-header-txt-info" ?hidden="${!(card.currentItemLink.isDirectory && card.currentItemLink.isRoot)}">./</div>
-        </div>
-        
-        <div id="mec-header-right-area">
-          <button id="mec-menu-button" ?hidden="${!card.config.showMenuButton}" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
-        </div>
+    <ha-card>
+      <div id="mec-card">
+        ${card.browserMode ? [renderHeaderBrowser(card), renderContentBrowser(card)]
+          : !card.fullScreenPlayerOn ? [renderHeaderPlayer(card), renderContentPlayer(card)]
+          : null
+        }
       </div>
-      
-      <div id="mec-content">       
+    </ha-card>
+              
+    ${card.menuOn ? renderMenu(card) : null}
+  
+    ${!card.browserMode && card.fullScreenPlayerOn ? renderPlayerFullscreen(card) : null }
+`;
 
-        <div id="mec-browser-content" ?hidden="${card.currentItemLink.isFile}">
-          ${card.currentItemLink.children.length > 0 ? getItemList(card) : card.navigationMap.loading ? html`<div class="loading">Loading...</div>` : html`<div class="p-4">No files found.</div>`}
-        </div>
+const renderHeaderBrowser = (card) => html`
+  <div id="mec-header">
 
-        <div id="mec-player-content" ?hidden="${!card.currentItemLink.isFile || card.fullScreenPlayerOn}">
-          ${card.navigationMap.loading && !card.fullScreenPlayerOn ? html`<div class="loading">Loading...</div>` : getPlayer(card)}
-        </div>
-
-      </div>
+    <div id="mec-header-browser-buttons">
+      <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card);}}"><ha-icon icon=${backIcon}></button>
     </div>
-  </ha-card>
-            
-  ${card.menuOn
-    ? html`
-        <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
-        <div class="mec-menu">
-          <button class="mec-menu-item" @click=${() => {
-            card.navigationMap.navigateBackToRoot();
-            card.menuOn = false;
-          }}><ha-icon icon=${homeIcon}></ha-icon> Back to root </button>
-          <button class="mec-menu-item" @click=${() => {
-            card.navigationMap.reloadCurrentItem();
-            card.menuOn = false;
-          }}><ha-icon icon=${refreshIcon}></ha-icon> Refresh </button>
-          <button class="mec-menu-item" ?hidden="${!card.config.enableCache}" @click=${() => {
-            card.navigationMap.clearCache();
-            card.menuOn = false;
-          }}><ha-icon icon=${clearIcon}></ha-icon> Clear cache </button>
-        </div>
-    ` : null}
 
-  ${card.currentItemLink.isFile && card.fullScreenPlayerOn
-    ? html`
-        <div id="fullscreen-player">
-          <div class="fullscreen-overlay">
-            ${getPlayer(card)}
-            <button class="fullscreen-close" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
-          </div>
-        </div>
-    ` : null}
+    ${renderHeaderStaticFileds(card)}
+  </div>
+`;
+
+const renderHeaderPlayer = (card) => html`
+  <div id="mec-header">
+
+    <div id="mec-header-player-buttons">
+      <button class="mec-button" @click="${() => {
+        card.navigationMap.navigateBack();
+        card.fullScreenPlayerOn = false;
+      }}"><ha-icon icon=${closeIcon}></button>
+      <button class="mec-button" @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
+    </div>
+
+    ${renderHeaderStaticFileds(card)}
+  </div>
+`;
+
+const renderHeaderStaticFileds = (card) => html`
+    <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
+    
+    <div id="mec-header-info-area" ?hidden="${!card.config.showNavigationInfo}">
+      <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
+      <div class="mec-header-txt-info" ?hidden="${!card.currentItemLink.isRoot}">./</div>
+    </div>
+    
+    <div id="mec-header-right-area">
+      <button id="mec-menu-button" ?hidden="${!card.config.showMenuButton}" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
+    </div>
+`;
+
+const renderContentBrowser = (card) => html`
+  <div id="mec-content">       
+
+    <div id="mec-browser-content">
+      ${card.currentItemForceLitUpdate && card.currentItemLink.children.length > 0 ? getItemList(card) : card.navigationMap.loading ? html`<div class="loading">Loading...</div>` : html`<div class="p-4">No files found.</div>`}
+    </div>
+
+  </div>
+`;
+
+const renderContentPlayer = (card) => html`
+  <div id="mec-content">       
+
+    <div id="mec-player-content">
+      ${card.currentItemForceLitUpdate && card.navigationMap.loading ? html`<div class="loading">Loading...</div>` : getPlayer(card)}
+    </div>
+
+  </div>
+`;
+
+const renderPlayerFullscreen = (card) => html`
+  <div id="fullscreen-player">
+    <div class="fullscreen-overlay">
+      ${getPlayer(card)}
+      <button class="fullscreen-close" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
+    </div>
+  </div>
+`;
+
+const renderMenu = (card) => html`
+  <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
+  <div class="mec-menu">
+    <button class="mec-menu-item" @click=${() => {
+      card.navigationMap.navigateBackToRoot();
+      card.menuOn = false;
+      scrollToTop(card);
+    }}><ha-icon icon=${homeIcon}></ha-icon> Back to root </button>
+    <button class="mec-menu-item" @click=${() => {
+      card.navigationMap.reloadCurrentItem();
+      card.menuOn = false;
+      scrollToTop(card);
+    }}><ha-icon icon=${refreshIcon}></ha-icon> Refresh </button>
+    <button class="mec-menu-item" @click=${() => {
+      card.navigationMap.clearMemory();
+      card.menuOn = false;
+    }}><ha-icon icon=${clearIcon}></ha-icon> Clear memory </button>
+  </div>
 `;
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 const getItemList = (card) => {
   return html`
-    ${card.currentItemLink.children.map((item,index) => html`
-      <div class="mec-browser-content-item" @click="${() => {card.navigationMap.openChild(index)}}">
-        <ha-icon class="mec-browser-content-item-icon" icon=${
-          item?.isDirectory ? folderIcon 
-            : item?.isImage ? imageIcon 
-            : item?.isVideo ? videoIcon 
-            : fileIcon
-          }>
-        </ha-icon>
-        <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
-      </div>`
-    )}
-
+    ${repeat(card.currentItemLink.children,
+         (it) => it.mediaContentId,
+         (item, index) => html`
+            <div class="mec-browser-content-item" @click="${() => {card.navigationMap.openChild(index); scrollToTop(card);}}">
+              ${card.previewImageForceLitUpdate && item.previewImage 
+                ? html`<img class="mec-preview" src="${item.previewImage}" loading="lazy" />`
+                : html`<ha-icon class="mec-browser-content-item-icon" icon=${
+                    item.isDirectory ? folderIcon 
+                    : item.isImage ? imageIcon 
+                    : item.isVideo ? videoIcon 
+                    : fileIcon
+                  }></ha-icon>`}
+              <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
+            </div>`
+      )}
     ${card.navigationMap.loading && card.currentItemLink.children.length == 0 ? html`
       <div class="mec-browser-content-item">
         <div class="mec-browser-content-item-icon"><ha-icon icon=${fileIcon}></div>
         <div class="mec-browser-content-item-name">Loading...</div>
       </div>
       ` : ``}
-  `
+  `;
 }
 
 const getPlayer = (card) => {
@@ -126,9 +159,6 @@ const getPlayer = (card) => {
   `;
 }
 
-
-
-
-  /*
-
-*/
+const scrollToTop = (card) => {
+  card.shadowRoot.getElementById("mec-browser-content")?.scrollTo({ top: 0, behavior: 'auto' });
+}

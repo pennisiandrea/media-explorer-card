@@ -4,22 +4,20 @@ export const cardStyle = css`
   :host {
     display: block;
     width: 100%;
-    height: 100%;
     box-sizing: border-box;
+    height: 100%;
   }
   ha-card {
     display: flex;
-    flex-direction: column;
-    height: 100%;
     box-sizing: border-box;
     background-color: var(--card-background-color);
     color: var(--primary-text-color);
+    height: 100%;
   }
 
   #mec-card {
     display: flex;
     flex-direction: column;
-    height: 100%;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -123,8 +121,9 @@ export const cardStyle = css`
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: auto;
     padding-bottom: 0.5rem;
+    min-height: 0;
   }
 
   #mec-browser-content[hidden],
@@ -135,7 +134,8 @@ export const cardStyle = css`
   #mec-browser-content {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--mec-icon-size), 1fr));
+    grid-template-rows: max-content;
     gap: 0.5rem;
     overflow-y: auto;
     box-sizing: border-box;
@@ -170,7 +170,12 @@ export const cardStyle = css`
     text-align: center;
     word-break: break-word;
   }
-
+  .mec-preview {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 4px;
+  }
   .loading {
     text-align: center;
     height: 100%;

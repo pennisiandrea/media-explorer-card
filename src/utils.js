@@ -2,12 +2,10 @@ import { openDB } from 'idb';
 
 export class CacheManager {
   #dbName;
-  #dbVersion;
   #tableName;
 
-  constructor(dbName,dbVersion,tableName){
+  constructor(dbName,tableName){
     this.#dbName = dbName;
-    this.#dbVersion = dbVersion;
     this.#tableName = tableName;
     
     this.#getDB(this.#tableName);
@@ -44,10 +42,25 @@ export class CacheManager {
   
   // Private methods
   async #getDB(tableName) {
-    return await openDB(this.#dbName, this.#dbVersion, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(tableName)) db.createObjectStore(tableName);
-      }
-    });
+    try {
+      let db = await openDB(this.#dbName);
+
+      if (db.objectStoreNames.contains(tableName)) return db;
+
+      // New table needs to be created
+      const newVersion = db.version + 1;
+      db.close();
+
+      db = await openDB(this.#dbName, newVersion, {
+          upgrade(db) {
+            if (!db.objectStoreNames.contains(tableName)) db.createObjectStore(tableName);
+          }
+        });
+
+      return db;
+    } catch (err) {
+      console.error("Error opening cache:", err);
+      return null;
+    }
   }
 }
