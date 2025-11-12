@@ -1,3 +1,5 @@
+import { CacheManager } from './utils.js';
+
 export class NavigationItem extends EventTarget {
   // Private fields
   #title = "";
@@ -278,9 +280,8 @@ export class NavigationItem extends EventTarget {
 
 export class NavigationMap extends EventTarget {
   // Private fields
-  /** @type {import('./utils.js').CacheManager} */
-  #cacheManager;
   #cacheKey = "";
+  #cacheTable = "";
   #initDone = false;
   #startPath = "";
   #enablePreview = null;
@@ -295,11 +296,11 @@ export class NavigationMap extends EventTarget {
   loading=false;
 
   // Constructor
-  constructor(hass, cacheManager, cacheKey, startPath, enablePreview, savePreview) { 
+  constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview) { 
     super();
     
     this.hass = hass;
-    this.#cacheManager = cacheManager;
+    this.#cacheTable = cacheTable;
     this.#cacheKey = cacheKey;
     this.#startPath = startPath;
     this.#enablePreview = enablePreview;
@@ -404,8 +405,8 @@ export class NavigationMap extends EventTarget {
     
   }
   clearMemory() {
-    if (!this.#initDone || !this.#cacheManager) return null;
-    this.#cacheManager.clearCache(this.#cacheKey);
+    if (!this.#initDone || !this.#cacheTable) return null;
+    CacheManager.clearCache(this.#cacheTable,this.#cacheKey);
     this.currentItem.stopOperations();
     this.currentItem = this.rootItem;
     this.rootItem.children = [];
@@ -416,7 +417,7 @@ export class NavigationMap extends EventTarget {
   async #Init() {
 
     let cachedData = null;
-    if (this.#cacheManager) cachedData = await this.#cacheManager.getCachedData(this.#cacheKey);
+    if (this.#cacheTable) cachedData = await CacheManager.getCachedData(this.#cacheTable,this.#cacheKey);
 
     if (!cachedData) this.rootItem = new NavigationItem(this.hass,null,"root","directory",this.#startPath,null,null,this.#enablePreview);
     else this.rootItem = NavigationItem.fromJSON(this.hass,cachedData,null,this.#enablePreview);
@@ -447,8 +448,8 @@ export class NavigationMap extends EventTarget {
     }
   }
   #saveMapOnCache() {
-    if (!this.#cacheManager) return;
-    this.#cacheManager.saveOnCache(this.#cacheKey, this.rootItem.toJSON());
+    if (!this.#cacheTable) return;
+    CacheManager.saveOnCache(this.#cacheTable,this.#cacheKey, this.rootItem.toJSON());
   }
   #loadCurrentItemChildren() {
     this.loading = true;

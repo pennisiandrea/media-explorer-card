@@ -7,7 +7,6 @@ import { renderTemplate} from './template.js';
 class MediaExplorerCard extends LitElement {
   // private fields
   #version = "20251111a";
-  cacheManager;
   #cacheDBName = "MediaExplorerCard";
   #cacheTableName = "";
   #cacheMapKey = "map";
@@ -51,6 +50,13 @@ class MediaExplorerCard extends LitElement {
   }
 
   get hass() {return this._hass}
+  get isEditMode() {
+    return (
+      this.closest("hui-card-editor") !== null ||
+      this.closest("hui-dialog-edit-card") !== null ||
+      this.editMode
+    );
+  }
 
   setConfig(config) { 
     if (!config) throw new Error("No configuration provided");
@@ -69,23 +75,26 @@ class MediaExplorerCard extends LitElement {
   }
 
   async #initCard(){
+
     this.#initStarted = true;
     this.#cacheTableName = "mec_" + this.config.startPath.replace(/\s+/g, "_");
-    this.cacheManager = new CacheManager(this.#cacheDBName,this.#cacheTableName);
+    
+    CacheManager.dbName = this.#cacheDBName;
+    await CacheManager.addTable(this.#cacheTableName);
 
-    let cachedVersion = await this.cacheManager.getCachedData(this.#cacheVersionKey);
+    let cachedVersion = await CacheManager.getCachedData(this.#cacheTableName,this.#cacheVersionKey);
 
     if (!cachedVersion || cachedVersion !== this.#version){
-      await this.cacheManager.clearCache(this.#cacheVersionKey);
-      await this.cacheManager.clearCache(this.#cacheMapKey);
-      await this.cacheManager.saveOnCache(this.#cacheVersionKey,this.#version);
+      await CacheManager.clearCache(this.#cacheTableName,this.#cacheVersionKey);
+      await CacheManager.clearCache(this.#cacheTableName,this.#cacheMapKey);
+      await CacheManager.saveOnCache(this.#cacheTableName,this.#cacheVersionKey,this.#version);
     }
 
     if (!this.config.enableCache){
-      await this.cacheManager.clearCache(this.#cacheMapKey);
+      await CacheManager.clearCache(this.#cacheTableName,this.#cacheMapKey);
       this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath,this.config.enablePreview,this.config.savePreview);
     }
-    else this.navigationMap = new NavigationMap(this._hass,this.cacheManager,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview);
+    else this.navigationMap = new NavigationMap(this._hass,this.#cacheTableName,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview);
 
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;
@@ -112,15 +121,11 @@ class MediaExplorerCard extends LitElement {
   }
 
   updated(changedProps) {
-    if (!this.#initDone) {
-      if (this.config && this._hass && !this.isEditMode()) {
-        this.#initCard();
-      }
+    if (this.#initDone || this.#initStarted) return;
+    
+    if (this.config && this._hass && !this.isEditMode) {
+      this.#initCard();
     }
-  }
-
-  isEditMode() {
-    return document.querySelector("hui-dialog-edit-card") !== null;
   }
 
   firstUpdated() {

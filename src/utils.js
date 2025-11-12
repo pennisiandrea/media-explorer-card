@@ -1,66 +1,128 @@
 import { openDB } from 'idb';
 
 export class CacheManager {
-  #dbName;
-  #tableName;
+  static #dbName;
+  static #tablesNames = [];
+  static #creatingTable;
+  static #waitingCreatingTable = 0;
+  static #dbInstance;
 
-  constructor(dbName,tableName){
-    this.#dbName = dbName;
-    this.#tableName = tableName;
-    
-    this.#getDB(this.#tableName);
+  constructor(){
+    throw new Error("Use this as static class -> config cannot be instantiated");
   }
 
-  async saveOnCache(dataKey,data) {
+  static get dbName() {return this.#dbName}
+  static set dbName(dbName) {if (!this.#dbName) this.#dbName = dbName} 
+
+  static async addTable(tableName) {
+    if (this.#tablesNames.includes(tableName)) return;
+
+    const result = await this.#createTable(tableName);
+    if (result) {
+      this.#tablesNames.push(tableName);
+    }
+    return result;
+  }
+  static async saveOnCache(tableName,dataKey,data) {
+    if (!this.#tablesNames.includes(tableName)) {
+      console.error("saveOnCache: table not yet added to database");
+      return false;
+    }
     try {
-      const db = await this.#getDB(this.#tableName);
-      await db.put(this.#tableName, data, dataKey);
+      if (!await this.#getDB()) return false;
+      await this.#dbInstance.put(tableName, data, dataKey);
     } catch (err) {
       console.error("Error saving to IndexedDB:", err);
+      return false;
     }
+    return true;
   }
-  async getCachedData(dataKey) {
+  static async getCachedData(tableName,dataKey) {
+    if (!this.#tablesNames.includes(tableName)) {
+      console.error("saveOnCache: table not yet added to database");
+      return false;
+    }
+    let data;
     try {
-      const db = await this.#getDB(this.#tableName);
-      const data = await db.get(this.#tableName, dataKey);
-      if (!data) return null;
-      return data;
+      const result = await this.#getDB();
+      if (!result) return false;
+      data = await this.#dbInstance.get(tableName, dataKey);
+      if (!data) return false;
     } catch (err) {
       console.warn("Error reading cache:", err);
       await this.clearCache(dataKey);
-      return null;
+      return false;
     }
+    return data;
   }
-  async clearCache(dataKey) {
+  static async clearCache(tableName,dataKey) {
+    if (!this.#tablesNames.includes(tableName)) {
+      console.error("saveOnCache: table not yet added to database");
+      return false;
+    }
     try {
-      const db = await this.#getDB(this.#tableName);
-      await db.delete(this.#tableName, dataKey);
+      if (!await this.#getDB()) return false;
+      await this.#dbInstance.delete(tableName, dataKey);
     } catch (err) {
       console.error("Error clearing cache:", err);
+      return false;
     }
+    return true;
   }
-  
-  // Private methods
-  async #getDB(tableName) {
+  static async #getDB() {
     try {
-      let db = await openDB(this.#dbName);
-
-      if (db.objectStoreNames.contains(tableName)) return db;
-
-      // New table needs to be created
-      const newVersion = db.version + 1;
-      db.close();
-
-      db = await openDB(this.#dbName, newVersion, {
-          upgrade(db) {
-            if (!db.objectStoreNames.contains(tableName)) db.createObjectStore(tableName);
-          }
-        });
-
-      return db;
+      while(this.#waitingCreatingTable > 0) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      this.#dbInstance = await openDB(this.#dbName);
     } catch (err) {
-      console.error("Error opening cache:", err);
-      return null;
+      console.error("Error opening/creating DB:", err);
+      return false;
     }
+    return true;
+  }
+  // Private methods
+  static async #createTable(tableName) {
+    let result = false;
+
+    this.#waitingCreatingTable++;
+
+    while(this.#creatingTable) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  
+    this.#creatingTable = true;
+
+    try {
+      this.#dbInstance?.close();
+      this.#dbInstance = await openDB(this.#dbName);
+
+      if (this.#dbInstance.objectStoreNames.contains(tableName)) result = true;
+      else {
+        // New table needs to be created
+        const oldVersion = this.#dbInstance.version;
+        this.#dbInstance.close();
+        
+        this.#dbInstance = await openDB(this.#dbName, oldVersion+1, {
+            upgrade(db) {
+              if (!db.objectStoreNames.contains(tableName)) db.createObjectStore(tableName);
+            },
+            blocked() {
+              console.warn("⚠️ Upgrade blocked: ci sono altre connessioni aperte!");
+            },
+          });
+          
+        result = true;
+      }
+    } catch (err) {
+      console.error("Error creating table:", err);
+      result = false;
+    } finally {
+      this.#creatingTable = false;
+      this.#waitingCreatingTable --;
+    }
+
+    return result;
   }
 }
