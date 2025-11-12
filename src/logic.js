@@ -171,7 +171,7 @@ export class NavigationItem extends EventTarget {
     
     this.loadChildrenPreview = true;
     const tasks = [];
-    const maxChunkSize = 50;
+    const maxChunkSize = 20;
 
     let childInTheChunk = 0;
     let chunkSize = 1;
@@ -188,7 +188,8 @@ export class NavigationItem extends EventTarget {
           tasks.length = 0;
           childInTheChunk = 0;
           chunkSize = Math.min(chunkSize*2,maxChunkSize);
-          await new Promise(requestAnimationFrame);
+
+          if (chunkSize == maxChunkSize) await new Promise(resolve => setTimeout(resolve, 500)); // This is to prevent CPU 100%
         }
       }
     }
@@ -314,38 +315,42 @@ export class NavigationMap extends EventTarget {
 
   // Instance methods
   navigateBackToRoot() {
-    if (!this.#initDone) return null;
-    if (!this.loading) {
-      this.currentItem.stopOperations();
-      if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
-      this.currentItem = this.rootItem;
-      this.#openCurrentItem(); 
+    if (this.#initDone) {
+      if (!this.loading) {
+        this.currentItem.stopOperations();
+        if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
+        this.currentItem = this.rootItem;
+        this.#openCurrentItem(); 
+      }
     }
   }
   navigateBack() {
-    if (!this.#initDone) return null;
-    if (!this.loading) {
-      this.currentItem.stopOperations();
-      if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
-      this.currentItem = this.currentItem.parent;
-      this.#openCurrentItem(); 
+    if (this.#initDone) {
+      if (!this.loading) {
+        this.currentItem.stopOperations();
+        if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
+        this.currentItem = this.currentItem.parent;
+        this.#openCurrentItem(); 
+      }
     }
   }
   reloadCurrentItem() {
-    if (!this.#initDone) return null;
-    if (!this.loading) {
-      this.currentItem.stopOperations();
-      if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
-      this.#openCurrentItem(); 
+    if (this.#initDone) {
+      if (!this.loading) {
+        this.currentItem.stopOperations();
+        if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
+        this.#openCurrentItem(); 
+      }
     }
   }
   openChild(index) {
-    if (!this.#initDone) return null;
-    if (!this.loading) {
-      if (index >= 0 && index < this.currentItem.children.length) {
-        this.currentItem.stopOperations();
-        this.currentItem = this.currentItem.children[index];      
-        this.#openCurrentItem(); 
+    if (this.#initDone) {
+      if (!this.loading) {
+        if (index >= 0 && index < this.currentItem.children.length) {
+          this.currentItem.stopOperations();
+          this.currentItem = this.currentItem.children[index];      
+          this.#openCurrentItem(); 
+        }
       }
     }
   }

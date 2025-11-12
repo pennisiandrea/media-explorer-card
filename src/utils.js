@@ -1,5 +1,8 @@
 import { openDB } from 'idb';
 
+const DEBUG = true;
+let INSTANCE = 0;
+
 export class CacheManager {
   static #dbName;
   static #tablesNames = [];
@@ -15,75 +18,116 @@ export class CacheManager {
   static set dbName(dbName) {if (!this.#dbName) this.#dbName = dbName} 
 
   static async addTable(tableName) {
-    if (this.#tablesNames.includes(tableName)) return;
+    devLog("CacheManager.addTable - start");
+    let result;
 
-    const result = await this.#createTable(tableName);
-    if (result) {
-      this.#tablesNames.push(tableName);
+    if (!this.#tablesNames.includes(tableName)){
+
+      result = await this.#createTable(tableName);
+      if (result) {
+        this.#tablesNames.push(tableName);
+      }
     }
+
+    devLog("CacheManager.addTable - end");
     return result;
   }
+
   static async saveOnCache(tableName,dataKey,data) {
+    devLog("CacheManager.saveOnCache - start");
+
+    let result;
+
     if (!this.#tablesNames.includes(tableName)) {
       console.error("saveOnCache: table not yet added to database");
-      return false;
+      result = false;
     }
-    try {
-      if (!await this.#getDB()) return false;
-      await this.#dbInstance.put(tableName, data, dataKey);
-    } catch (err) {
-      console.error("Error saving to IndexedDB:", err);
-      return false;
+    else {
+      try {
+        if (!await this.#getDB()) return false;
+        await this.#dbInstance.put(tableName, data, dataKey);
+        result = true;
+      } catch (err) {
+        console.error("Error saving to IndexedDB:", err);
+        result = false;
+      }
     }
-    return true;
+
+    devLog("CacheManager.saveOnCache - end");
+    return result;
   }
+
   static async getCachedData(tableName,dataKey) {
+    devLog("CacheManager.getCachedData - start");
+
+    let result;
     if (!this.#tablesNames.includes(tableName)) {
       console.error("saveOnCache: table not yet added to database");
-      return false;
+      result = false;
     }
-    let data;
-    try {
-      const result = await this.#getDB();
-      if (!result) return false;
-      data = await this.#dbInstance.get(tableName, dataKey);
-      if (!data) return false;
-    } catch (err) {
-      console.warn("Error reading cache:", err);
-      await this.clearCache(dataKey);
-      return false;
+    else {
+      try {
+        if (await this.#getDB()) {
+          let data;
+          data = await this.#dbInstance.get(tableName, dataKey);
+          if (!data) result = false;
+          else result = data;
+        }
+        else result = false;
+      } catch (err) {
+        console.warn("Error reading cache:", err);
+        await this.clearCache(dataKey);
+        result = false;
+      }
     }
-    return data;
+    devLog("CacheManager.getCachedData - end");
+    return result;
   }
   static async clearCache(tableName,dataKey) {
+    devLog("CacheManager.clearCache - start");
+    let result;
+
     if (!this.#tablesNames.includes(tableName)) {
       console.error("saveOnCache: table not yet added to database");
-      return false;
+      result = false;
     }
-    try {
-      if (!await this.#getDB()) return false;
-      await this.#dbInstance.delete(tableName, dataKey);
-    } catch (err) {
-      console.error("Error clearing cache:", err);
-      return false;
+    else {
+      try {
+        if (await this.#getDB()) {
+          await this.#dbInstance.delete(tableName, dataKey);
+          result = true;
+        }
+        else result = false;
+      } catch (err) {
+        console.error("Error clearing cache:", err);
+        result = false;
+      }
     }
-    return true;
+
+    devLog("CacheManager.clearCache - end");
+    return result;
   }
   static async #getDB() {
+    devLog("CacheManager.#getDB - start");
+    let result;
     try {
       while(this.#waitingCreatingTable > 0) {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
       
       this.#dbInstance = await openDB(this.#dbName);
+      result = true;
     } catch (err) {
       console.error("Error opening/creating DB:", err);
-      return false;
+      result = false;
     }
-    return true;
+    
+    devLog("CacheManager.#getDB - end");
+    return result;
   }
   // Private methods
   static async #createTable(tableName) {
+    devLog("CacheManager.createTable - start");
     let result = false;
 
     this.#waitingCreatingTable++;
@@ -109,7 +153,7 @@ export class CacheManager {
               if (!db.objectStoreNames.contains(tableName)) db.createObjectStore(tableName);
             },
             blocked() {
-              console.warn("⚠️ Upgrade blocked: ci sono altre connessioni aperte!");
+              console.warn("Upgrade blocked: other connections are pending!");
             },
           });
           
@@ -123,6 +167,13 @@ export class CacheManager {
       this.#waitingCreatingTable --;
     }
 
+    devLog("CacheManager.createTable - end");
     return result;
+  }
+}
+
+export function devLog(...args) {
+  if (DEBUG) {
+    console.info(`MEC${INSTANCE} - `,...args);
   }
 }

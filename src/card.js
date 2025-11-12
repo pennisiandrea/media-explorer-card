@@ -1,6 +1,6 @@
 import { cardStyle } from './style.js';
 import { NavigationItem, NavigationMap} from './logic.js';
-import { CacheManager } from './utils.js';
+import { CacheManager, devLog } from './utils.js';
 import { LitElement } from 'lit';
 import { renderTemplate} from './template.js';
 
@@ -71,11 +71,11 @@ class MediaExplorerCard extends LitElement {
       itemSize: "200px",
       ...config,
     };
-
+    
   }
 
   async #initCard(){
-
+    devLog("InitCard - start");
     this.#initStarted = true;
     this.#cacheTableName = "mec_" + this.config.startPath.replace(/\s+/g, "_");
     
@@ -107,6 +107,7 @@ class MediaExplorerCard extends LitElement {
     });
     this.currentItemLink = this.navigationMap.currentItem;
     this.#initDone = true;
+    devLog("InitCard - end");
   }
 
   getCardSize() { return 6; }

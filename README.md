@@ -16,8 +16,9 @@ Supports **image viewing** and **video playback** with a simple user interface.
 
 ## Features
 * Browse media folders and files directly from your dashboard.
+* Option to load thumbnails for images and videos.
 * Display images and play videos inline or in fullscreen mode.
-* Smooth and fast navigation system, with optional caching for instant loading.
+* Smart navigation system, with optional caching for instant loading.
 
 ## Usage
 
@@ -29,9 +30,11 @@ title: Archivio telecamere
 showMenuButton: true
 showNavigationInfo: true
 enableCache: true
+enablePreview: true
+savePreview: true
 grid_options:
-  rows: 7
   columns: 20
+  rows: 7
 ```
 
 | Option             | Type   | Description                                       | Optional | default value |
@@ -45,7 +48,7 @@ grid_options:
 | savePreview        | bool   | Saves the thumbnail in the volatile memory        | true     | true          |
 | itemSize           | string | Size of the folders/files icons or previews       | true     | "200px"       |
 
-Use grid_options to properly size the card in your dashboard.
+Use grid_options to size the card in your dashboard.
 
 ### Cache
 If enableCache option is enabled, it records a navigation map in the non-volatile memory of the browser. This provides the fastest navigation experience for those folders you have already visited. To erase the saved navigation map you can use the menu button:
@@ -56,6 +59,7 @@ If enableCache option is enabled, it records a navigation map in the non-volatil
 With enablePreview option enabled, the card loads thumbnails for images and videos files. 
 With savePreview option enabled, thumbnails are saved in the volatile memory of the browser. This means that thumbnails already loaded will be instantly available and data will be completely erased with the next webpage reload. Thumbnails are never saved in the non-volatile memory.
 
+![Card Screenshot](./screenshots/screenshot_5.png)
 
 ## HACS Installation Instructions (recommended)
 
