@@ -32,6 +32,8 @@ showNavigationInfo: true
 enableCache: true
 enablePreview: true
 savePreview: true
+itemSize: 200px
+masonryMaxHeight: 100%
 grid_options:
   columns: 20
   rows: 7
@@ -47,6 +49,7 @@ grid_options:
 | enablePreview      | bool   | Enable the thumbnail load of images and videos    | true     | true          |
 | savePreview        | bool   | Saves the thumbnail in the volatile memory        | true     | true          |
 | itemSize           | string | Size of the folders/files icons or previews       | true     | "200px"       |
+| masonryMaxHeight   | string | Max height of the card - useful on masonry view   | true     | "100%"        |
 
 Use grid_options to size the card in your dashboard.
 
@@ -62,29 +65,23 @@ With savePreview option enabled, thumbnails are saved in the volatile memory of 
 ![Card Screenshot](./screenshots/screenshot_5.png)
 
 ## HACS Installation Instructions (recommended)
+Use this link to directly go to the repository in HACS
 
-- On your Home Assistant sidebar menu, go to HACS > Frontend
-- Click on the 3-dot overflow menu in the upper right, and select `custom repositories` item.
-- Copy / paste `https://github.com/pennisiandrea/media-explorer-card.git` in the Repository textbox and select `Dashboard` for the category entry.
-- Click on `Add` to add the custom repository.
-- You can then click on the `Media Explorer Card` repository entry (you may need to filter your list first to find the new entry).
-- Click on `download` to start the download. It will install the card to your `/config/www/community/media_explorer_card` directory.
-- Go back on your dashboard and click on the icon at the right top corner then on Edit dashboard.
-- You can now click on Add card in the bottom right corner and search for "custom:media-explorer-card".
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=pennisiandrea&repository=media-explorer-card&category=frontend)
+
+or
+
+1. Install HACS if you don't have it already
+2. Open HACS in Home Assistant
+3. Search for "Media Explorer Card"
+4. Click the download button. 
 
 ## Manual Installation
 
-- using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
-- change directory to the `www` folder; if you don't have this directory, then create it.
-- download the `media-explorer-card.js` file from the [GitHub repository](https://github.com/pennisiandrea/media-explorer-card.git) into your `<config>/www` folder.
-- on your dashboard click on the icon at the right top corner then on Edit dashboard.
-- click again on that icon and then on Manage resources.
-- click on Add resource.
-- copy and paste this: `/local/media-explorer-card.js`.
-- click on `JavaScript Module` then Create.
-- go back and refresh your page.
-- you can now click on Add card in the bottom right corner and search for "custom:media-explorer-card".
-- after any update of the file you will have to edit `/local/media-explorer-card.js`.
+- Download media-explorer-card.js file from the latest release.
+- Put media-explorer-card.js file into your config/www folder.
+- Add reference to media-explorer-card.js in Dashboard:
+    Settings → Dashboards → More Options icon → Resources → Add Resource → Set Url as /local/media-explorer-card.js → Set Resource type as JavaScript Module. Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile
 
 ***
 

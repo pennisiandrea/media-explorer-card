@@ -14,6 +14,10 @@ const dotsIcon = "mdi:dots-vertical";
 const homeIcon = "mdi:home";
 const refreshIcon = "mdi:refresh";
 const clearIcon = "mdi:trash-can";
+const checkboxIcon = "mdi:checkbox-multiple-outline";
+const checkboxIconMarked = "mdi:checkbox-multiple-marked";
+const trashcanIcon = "mdi:trash-can-outline";
+
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 export const renderTemplate = (card) => html`
@@ -35,7 +39,21 @@ const renderHeaderBrowser = (card) => html`
   <div id="mec-header">
 
     <div id="mec-header-browser-buttons">
-      <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card);}}"><ha-icon icon=${backIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card); card.selectionMode = false;}}"><ha-icon icon=${backIcon}></button>
+      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${() => {
+        if (card.selectionMode) {
+          card.navigationMap.ClearSelectedItems();
+          card.selectionMode = false;
+        }
+        else card.selectionMode = true;
+      }}"><ha-icon icon=${card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
+      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
+        card.navigationMap.deleteSelectedItems();
+        card.navigationMap.reloadCurrentItem();
+        card.selectionMode = false;      
+        scrollToTop(card);
+      }}"><ha-icon icon=${trashcanIcon}></button>
+      
     </div>
 
     ${renderHeaderStaticFileds(card)}
@@ -127,7 +145,11 @@ const getItemList = (card) => {
     ${repeat(card.currentItemLink.children,
          (it) => it.mediaContentId,
          (item, index) => html`
-            <div class="mec-browser-content-item" @click="${() => {card.navigationMap.openChild(index); scrollToTop(card);}}">
+            <div class="mec-browser-content-item" @click="${() => {if (!card.selectionMode) {card.navigationMap.openChild(index); scrollToTop(card);}}}">
+              ${card.selectionMode ? html`<input type="checkbox" class="mec-browser-content-item-checkbox" @change=${(e) => {
+                if(e.target.checked) card.navigationMap.SelectItem(item); 
+                else card.navigationMap.UnselectItem(item);
+              }}>`:``}
               ${card.previewImageForceLitUpdate && item.previewImage 
                 ? html`<img class="mec-preview" src="${item.previewImage}" loading="lazy" />`
                 : html`<ha-icon class="mec-browser-content-item-icon" icon=${

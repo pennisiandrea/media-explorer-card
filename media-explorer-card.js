@@ -83,6 +83,9 @@ const cardStyle = i$4`
     cursor: not-allowed;
     opacity: 0.6;
   }
+  .mec-button[hidden] {
+    display: none;
+  }
 
   #mec-header-title {
     font-size: var(--paper-font-headline_-_font-size, 20px);
@@ -148,6 +151,7 @@ const cardStyle = i$4`
     overflow: auto;
     padding-bottom: 0.5rem;
     min-height: 0;
+    max-height: var(--mec-content-max-height);
   }
 
   #mec-browser-content[hidden],
@@ -179,6 +183,8 @@ const cardStyle = i$4`
     border-radius: 6px;
     transition: background 0.2s;
     cursor: pointer;
+
+    position: relative;
   }
 
   .mec-browser-content-item-icon {
@@ -188,6 +194,9 @@ const cardStyle = i$4`
     justify-content: center;
     --mdc-icon-size: 100%;
     color: var(--state-icon-color);
+    
+    position: relative;
+    z-index: 1;
   }
 
   .mec-browser-content-item-name {
@@ -199,6 +208,18 @@ const cardStyle = i$4`
     height: auto;
     object-fit: cover;
     border-radius: 4px;
+
+    position: relative;
+    z-index: 1;
+  }
+  .mec-browser-content-item-checkbox {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10; /* sta sopra tutto */
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
   }
   .loading {
     text-align: center;
@@ -626,8 +647,6 @@ replaceTraps((oldTraps) => ({
     },
 }));
 
-let INSTANCE = 0;
-
 class CacheManager {
   static #dbName;
   static #tablesNames = [];
@@ -643,7 +662,7 @@ class CacheManager {
   static set dbName(dbName) {if (!this.#dbName) this.#dbName = dbName;} 
 
   static async addTable(tableName) {
-    devLog("CacheManager.addTable - start");
+    //devLog("CacheManager.addTable - start");
     let result;
 
     if (!this.#tablesNames.includes(tableName)){
@@ -654,12 +673,12 @@ class CacheManager {
       }
     }
 
-    devLog("CacheManager.addTable - end");
+    //devLog("CacheManager.addTable - end");
     return result;
   }
 
   static async saveOnCache(tableName,dataKey,data) {
-    devLog("CacheManager.saveOnCache - start");
+    //devLog("CacheManager.saveOnCache - start");
 
     let result;
 
@@ -678,12 +697,12 @@ class CacheManager {
       }
     }
 
-    devLog("CacheManager.saveOnCache - end");
+    //devLog("CacheManager.saveOnCache - end");
     return result;
   }
 
   static async getCachedData(tableName,dataKey) {
-    devLog("CacheManager.getCachedData - start");
+    //devLog("CacheManager.getCachedData - start");
 
     let result;
     if (!this.#tablesNames.includes(tableName)) {
@@ -705,11 +724,11 @@ class CacheManager {
         result = false;
       }
     }
-    devLog("CacheManager.getCachedData - end");
+    //devLog("CacheManager.getCachedData - end");
     return result;
   }
   static async clearCache(tableName,dataKey) {
-    devLog("CacheManager.clearCache - start");
+    //devLog("CacheManager.clearCache - start");
     let result;
 
     if (!this.#tablesNames.includes(tableName)) {
@@ -729,11 +748,11 @@ class CacheManager {
       }
     }
 
-    devLog("CacheManager.clearCache - end");
+    //devLog("CacheManager.clearCache - end");
     return result;
   }
   static async #getDB() {
-    devLog("CacheManager.#getDB - start");
+    //devLog("CacheManager.#getDB - start");
     let result;
     try {
       while(this.#waitingCreatingTable > 0) {
@@ -747,12 +766,12 @@ class CacheManager {
       result = false;
     }
     
-    devLog("CacheManager.#getDB - end");
+    //devLog("CacheManager.#getDB - end");
     return result;
   }
   // Private methods
   static async #createTable(tableName) {
-    devLog("CacheManager.createTable - start");
+    //devLog("CacheManager.createTable - start");
     let result = false;
 
     this.#waitingCreatingTable++;
@@ -792,14 +811,8 @@ class CacheManager {
       this.#waitingCreatingTable --;
     }
 
-    devLog("CacheManager.createTable - end");
+    //devLog("CacheManager.createTable - end");
     return result;
-  }
-}
-
-function devLog(...args) {
-  {
-    console.info(`MEC${INSTANCE} - `,...args);
   }
 }
 
@@ -890,6 +903,7 @@ class NavigationItem extends EventTarget {
   }
 
   async getURL() {
+    //devLog("NavigationItem.getURL - start");
     /*  returnVal
     0 = nothing changed
     1 = something changed
@@ -911,10 +925,12 @@ class NavigationItem extends EventTarget {
       returnVal = 99;
     }
     
+    //devLog("NavigationItem.getURL - end");
     return returnVal;
   }
 
   async loadChildren() {
+    //devLog("NavigationItem.loadChildren - start");
     /*  returnVal
     0 = nothing changed
     1 = something changed
@@ -961,6 +977,7 @@ class NavigationItem extends EventTarget {
       returnVal = 99;
     }
     
+    //devLog("NavigationItem.loadChildren - end");
     return returnVal;
   }
 
@@ -969,37 +986,49 @@ class NavigationItem extends EventTarget {
     for (const child of this.children) child.clearURL();
   }
 
-  async #loadChildrenPreviewImage() {
-    //const t0 = performance.now();
-    
+  async #loadChildrenPreviewImage(concurrency = 8) {
+    //devLog("NavigationItem.#loadChildrenPreviewImage - start");
+
     this.loadChildrenPreview = true;
-    const tasks = [];
-    const maxChunkSize = 20;
 
-    let childInTheChunk = 0;
-    let chunkSize = 1;
+    const queue = [];
+    let active = 0;
 
-    for (let childIndex = 0; childIndex < this.children.length; childIndex++) {
-      if (!this.children[childIndex].previewImage && (this.children[childIndex].isVideo || this.children[childIndex].isImage)) {
+    const runTask = async (child) => {
+      try {
+        active++;
+        await child.getPreviewImage();
+        this.#sendEventItemPreviewReady();
+      } finally {
+        active--;
+        next();
+      }
+    };
 
-        tasks.push(this.children[childIndex].getPreviewImage());
-        childInTheChunk = childInTheChunk + 1;
-        if (childInTheChunk >= chunkSize) {
-          await Promise.all(tasks);
-          if (!this.loadChildrenPreview) break;
-          this.#sendEventItemPreviewReady();
-          tasks.length = 0;
-          childInTheChunk = 0;
-          chunkSize = Math.min(chunkSize*2,maxChunkSize);
+    const next = () => {
+      if (!this.loadChildrenPreview) return;
+      if (active >= concurrency) return;
+      const child = queue.shift();
+      if (child) runTask(child);
+    };
 
-          if (chunkSize == maxChunkSize) await new Promise(resolve => setTimeout(resolve, 500));
-        }
+    // Prepara la coda
+    for (const child of this.children) {
+      if (!child.previewImage && (child.isVideo || child.isImage)) {
+        queue.push(child);
       }
     }
-    this.loadChildrenPreview = false;
 
-    //const t1 = performance.now();
-    //console.log(`Tempo di esecuzione ${(t1-t0).toFixed(2)} ms`);
+    // Avvia i primi "concurrency" task
+    for (let i = 0; i < concurrency; i++) next();
+
+    // Attendi che finiscano tutti
+    while ((queue.length > 0 || active > 0) && this.loadChildrenPreview) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    this.loadChildrenPreview = false;
+    //devLog("NavigationItem.#loadChildrenPreviewImage - end");
   }
 
   stopOperations() {
@@ -1007,66 +1036,67 @@ class NavigationItem extends EventTarget {
   }
 
   async getPreviewImage() {
+    //devLog("NavigationItem.getPreviewImage - start");
     if (!this.isImage && !this.isVideo) {
       this.#previewImage = null;
-      return;
     }
-    try {
-      await this.getURL();
-      if (!this.#url) return;
-      
-      const maxSize = 250;
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      
-      if (this.isImage) {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = this.#url;
-        await img.decode();
-
-        const scale = Math.min(maxSize / img.width, maxSize / img.height);
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      }
-      else if (this.isVideo) {
-        const video = document.createElement("video");
-        video.crossOrigin = "anonymous";
-        video.src = this.#url;
-        video.muted = true;
-        video.playsInline = true;
-
-        await new Promise((resolve, reject) => {
-          video.addEventListener("loadeddata", resolve, { once: true });
-          video.addEventListener("error", reject, { once: true });
-        });
-
-        video.currentTime = Math.min(1, video.duration / 2);
+    else {
+      try {
+        await this.getURL();
+        if (!this.#url) return;
         
-        await new Promise((resolve, reject) => {
-          video.addEventListener("seeked", resolve, { once: true });
-          video.addEventListener("error", reject, { once: true });
-        });
+        const maxSize = 250;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
         
-        const scale = Math.min(maxSize / video.videoWidth, maxSize / video.videoHeight);
-        canvas.width = video.videoWidth * scale;
-        canvas.height = video.videoHeight * scale;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (this.isImage) {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.src = this.#url;
+          await img.decode();
+
+          const scale = Math.min(maxSize / img.width, maxSize / img.height);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        else if (this.isVideo) {
+          const video = document.createElement("video");
+          video.crossOrigin = "anonymous";
+          video.src = this.#url;
+          video.muted = true;
+          video.playsInline = true;
+
+          await new Promise((resolve, reject) => {
+            video.addEventListener("loadeddata", resolve, { once: true });
+            video.addEventListener("error", reject, { once: true });
+          });
+
+          video.currentTime = Math.min(1, video.duration / 2);
+          
+          await new Promise((resolve, reject) => {
+            video.addEventListener("seeked", resolve, { once: true });
+            video.addEventListener("error", reject, { once: true });
+          });
+          
+          const scale = Math.min(maxSize / video.videoWidth, maxSize / video.videoHeight);
+          canvas.width = video.videoWidth * scale;
+          canvas.height = video.videoHeight * scale;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        };
+
+        this.#previewImage = canvas.toDataURL("image/jpeg", 1);
+
+      } catch (err) {
+        console.warn("Preview generation failed:", err);
+        
+        this.#previewImage = null;
       }
-      else return;
-
-      this.#previewImage = canvas.toDataURL("image/jpeg", 1);
-      return;
-
-    } catch (err) {
-      console.warn("Preview generation failed:", err);
-      
-      this.#previewImage = null;
-      return;
     }
 
+    //devLog("NavigationItem.getPreviewImage - end");
+    return;
   }
 
   #sendEventItemPreviewReady(){
@@ -1097,6 +1127,7 @@ class NavigationMap extends EventTarget {
   currentItem;
   hass;
   loading=false;
+  selectedItems=[];
 
   // Constructor
   constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview) { 
@@ -1117,6 +1148,7 @@ class NavigationMap extends EventTarget {
 
   // Instance methods
   navigateBackToRoot() {
+    //devLog("NavigationMap.navigateBackToRoot - start");
     if (this.#initDone) {
       if (!this.loading) {
         this.currentItem.stopOperations();
@@ -1125,8 +1157,10 @@ class NavigationMap extends EventTarget {
         this.#openCurrentItem(); 
       }
     }
+    //devLog("NavigationMap.navigateBackToRoot - end");
   }
   navigateBack() {
+    //devLog("NavigationMap.navigateBack - start");
     if (this.#initDone) {
       if (!this.loading) {
         this.currentItem.stopOperations();
@@ -1135,8 +1169,10 @@ class NavigationMap extends EventTarget {
         this.#openCurrentItem(); 
       }
     }
+    //devLog("NavigationMap.navigateBack - end");
   }
   reloadCurrentItem() {
+    //devLog("NavigationMap.reloadCurrentItem - start");
     if (this.#initDone) {
       if (!this.loading) {
         this.currentItem.stopOperations();
@@ -1144,8 +1180,10 @@ class NavigationMap extends EventTarget {
         this.#openCurrentItem(); 
       }
     }
+    //devLog("NavigationMap.reloadCurrentItem - end");
   }
   openChild(index) {
+    //devLog("NavigationMap.openChild - start");
     if (this.#initDone) {
       if (!this.loading) {
         if (index >= 0 && index < this.currentItem.children.length) {
@@ -1155,73 +1193,94 @@ class NavigationMap extends EventTarget {
         }
       }
     }
+    //devLog("NavigationMap.openChild - end");
   }
   openNextSibling() {
-    if (!this.#initDone || this.loading || !this.currentItem?.parent) return null;
+    //devLog("NavigationMap.openNextSibling - start");
+    if (this.#initDone && !this.loading && this.currentItem?.parent) {
 
-    const siblings = this.currentItem.parent.children;
-    if (!siblings?.length) return;
+      const siblings = this.currentItem.parent.children;
+      if (siblings?.length) {
 
-    const currentIndex = this.currentItem.siblingIndex;
-    let sibling = null;    
-    for (let i = currentIndex + 1; i < siblings.length; i ++){
-      if (siblings[i].isFile){
-        sibling = siblings[i];
-        break;
-      }
-    }
+        const currentIndex = this.currentItem.siblingIndex;
+        let sibling = null;    
+        for (let i = currentIndex + 1; i < siblings.length; i ++){
+          if (siblings[i].isFile){
+            sibling = siblings[i];
+            break;
+          }
+        }
 
-    if (!sibling) sibling = siblings.find(item => item.isFile);
+        if (!sibling) sibling = siblings.find(item => item.isFile);
 
-    if (sibling && sibling !== this.currentItem) {
-      this.currentItem.stopOperations();
-      this.currentItem = sibling;    
-      this.#openCurrentItem(); 
-    }
-    
-  }
-  openPrevSibling() {
-    if (!this.#initDone || this.loading || !this.currentItem?.parent) return;
-
-    const siblings = this.currentItem.parent.children;
-    if (!siblings?.length) return;
-
-    const currentIndex = this.currentItem.siblingIndex;
-    let sibling = null;
-    for (let i = currentIndex - 1; i >= 0; i--){
-      if (siblings[i].isFile){
-        sibling = siblings[i];
-        break;
-      }
-    }
-
-    if (!sibling){
-      for (let i = siblings.length - 1; i >= 0; i--) {
-        if (siblings[i].isFile) {
-          sibling = siblings[i];
-          break;
+        if (sibling && sibling !== this.currentItem) {
+          this.currentItem.stopOperations();
+          this.currentItem = sibling;    
+          this.#openCurrentItem(); 
         }
       }
     }
+    //devLog("NavigationMap.openNextSibling - end");    
+  }
+  openPrevSibling() {
+    //devLog("NavigationMap.openPrevSibling - start");
+    if (this.#initDone && !this.loading && this.currentItem?.parent) {
 
-    if (sibling && sibling !== this.currentItem) {
-      this.currentItem.stopOperations();
-      this.currentItem = sibling;    
-      this.#openCurrentItem(); 
+      const siblings = this.currentItem.parent.children;
+      if (siblings?.length) {
+
+        const currentIndex = this.currentItem.siblingIndex;
+        let sibling = null;
+        for (let i = currentIndex - 1; i >= 0; i--){
+          if (siblings[i].isFile){
+            sibling = siblings[i];
+            break;
+          }
+        }
+
+        if (!sibling){
+          for (let i = siblings.length - 1; i >= 0; i--) {
+            if (siblings[i].isFile) {
+              sibling = siblings[i];
+              break;
+            }
+          }
+        }
+
+        if (sibling && sibling !== this.currentItem) {
+          this.currentItem.stopOperations();
+          this.currentItem = sibling;    
+          this.#openCurrentItem(); 
+        }
+      }
     }
-    
+    //devLog("NavigationMap.openPrevSibling - end");
   }
   clearMemory() {
-    if (!this.#initDone || !this.#cacheTable) return null;
-    CacheManager.clearCache(this.#cacheTable,this.#cacheKey);
-    this.currentItem.stopOperations();
-    this.currentItem = this.rootItem;
-    this.rootItem.children = [];
-    this.#openCurrentItem();
+    //devLog("NavigationMap.clearMemory - start");
+    if (this.#initDone && this.#cacheTable) {
+      CacheManager.clearCache(this.#cacheTable,this.#cacheKey);
+      this.currentItem.stopOperations();
+      this.currentItem = this.rootItem;
+      this.rootItem.children = [];
+      this.#openCurrentItem();
+    }
+    //devLog("NavigationMap.clearMemory - end");
+  }
+  ClearSelectedItems() {
+    this.selectedItems.length = 0;
+  }
+  SelectItem(item) {
+    this.selectedItems.push(item);
+  }
+  UnselectItem(item) {
+    const idx = this.selectedItems.findIndex(it => it.mediaContentId === item.mediaContentId);
+    if (idx !== -1) this.selectedItems.splice(idx,1);
   }
 
   // Private methods
   async #Init() {
+    //devLog("NavigationMap.#Init - start");
 
     let cachedData = null;
     if (this.#cacheTable) cachedData = await CacheManager.getCachedData(this.#cacheTable,this.#cacheKey);
@@ -1234,6 +1293,7 @@ class NavigationMap extends EventTarget {
     this.currentItem = this.rootItem;
     this.#openCurrentItem(); 
     this.#initDone = true;
+    //devLog("NavigationMap.#Init - end");
   }
   #subscribeToCurrentItemEvents(){
     //itemPreviewReady
@@ -1242,6 +1302,7 @@ class NavigationMap extends EventTarget {
     });
   }
   #openCurrentItem() {
+    //devLog("NavigationMap.#openCurrentItem - start");
     if (this.currentItem.isDirectory) {      
       if(this.#enablePreview) this.#subscribeToCurrentItemEvents();
       this.#sendEventCurrentItemChanged();
@@ -1253,12 +1314,13 @@ class NavigationMap extends EventTarget {
         if (returnVal == 99) this.navigateBack();
       });
     }
+    //devLog("NavigationMap.#openCurrentItem - end");
   }
   #saveMapOnCache() {
-    if (!this.#cacheTable) return;
-    CacheManager.saveOnCache(this.#cacheTable,this.#cacheKey, this.rootItem.toJSON());
+    if (this.#cacheTable) CacheManager.saveOnCache(this.#cacheTable,this.#cacheKey, this.rootItem.toJSON());
   }
   #loadCurrentItemChildren() {
+    //devLog("NavigationMap.#loadCurrentItemChildren - start");
     this.loading = true;
     this.currentItem.loadChildren().then(returnVal => {
       this.loading = false;
@@ -1270,6 +1332,7 @@ class NavigationMap extends EventTarget {
         this.navigateBack();
       }
     });
+    //devLog("NavigationMap.#loadCurrentItemChildren - end");
   }
   #resetCurrentItemChildrenPreviewImages() {
     for(const child of this.currentItem.children) child.resetPreviewImage();
@@ -1320,6 +1383,10 @@ const dotsIcon = "mdi:dots-vertical";
 const homeIcon = "mdi:home";
 const refreshIcon = "mdi:refresh";
 const clearIcon = "mdi:trash-can";
+const checkboxIcon = "mdi:checkbox-multiple-outline";
+const checkboxIconMarked = "mdi:checkbox-multiple-marked";
+const trashcanIcon = "mdi:trash-can-outline";
+
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 const renderTemplate = (card) => x`
@@ -1341,7 +1408,21 @@ const renderHeaderBrowser = (card) => x`
   <div id="mec-header">
 
     <div id="mec-header-browser-buttons">
-      <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card);}}"><ha-icon icon=${backIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card); card.selectionMode = false;}}"><ha-icon icon=${backIcon}></button>
+      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${() => {
+        if (card.selectionMode) {
+          card.navigationMap.ClearSelectedItems();
+          card.selectionMode = false;
+        }
+        else card.selectionMode = true;
+      }}"><ha-icon icon=${card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
+      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
+        card.navigationMap.deleteSelectedItems();
+        card.navigationMap.reloadCurrentItem();
+        card.selectionMode = false;      
+        scrollToTop(card);
+      }}"><ha-icon icon=${trashcanIcon}></button>
+      
     </div>
 
     ${renderHeaderStaticFileds(card)}
@@ -1433,7 +1514,11 @@ const getItemList = (card) => {
     ${c(card.currentItemLink.children,
          (it) => it.mediaContentId,
          (item, index) => x`
-            <div class="mec-browser-content-item" @click="${() => {card.navigationMap.openChild(index); scrollToTop(card);}}">
+            <div class="mec-browser-content-item" @click="${() => {if (!card.selectionMode) {card.navigationMap.openChild(index); scrollToTop(card);}}}">
+              ${card.selectionMode ? x`<input type="checkbox" class="mec-browser-content-item-checkbox" @change=${(e) => {
+                if(e.target.checked) card.navigationMap.SelectItem(item); 
+                else card.navigationMap.UnselectItem(item);
+              }}>`:``}
               ${card.previewImageForceLitUpdate && item.previewImage 
                 ? x`<img class="mec-preview" src="${item.previewImage}" loading="lazy" />`
                 : x`<ha-icon class="mec-browser-content-item-icon" icon=${
@@ -1478,6 +1563,7 @@ class MediaExplorerCard extends i$1 {
   #cacheVersionKey = "cardVersion";
   #initDone = false;
   #initStarted = false;
+  #masonryView = false;
 
   // public fields
   /** @type {NavigationMap} */
@@ -1491,6 +1577,7 @@ class MediaExplorerCard extends i$1 {
     menuOn: { state: true },
     fullScreenPlayerOn: { state: true },
     browserMode: { state: true },
+    selectionMode: { state: true },
     currentItemForceLitUpdate: { state: true },
     previewImageForceLitUpdate: { state: true },
   };
@@ -1506,6 +1593,7 @@ class MediaExplorerCard extends i$1 {
     this.menuOn = false;
     this.fullScreenPlayerOn = false;
     this.browserMode = true;
+    this.selectionMode = false;
     this.previewImageForceLitUpdate = 0;
     this.currentItemForceLitUpdate = 0;
   }
@@ -1534,13 +1622,14 @@ class MediaExplorerCard extends i$1 {
       enablePreview: true,
       savePreview: true,
       itemSize: "200px",
+      masonryMaxHeight: "100%",
       ...config,
     };
     
   }
 
   async #initCard(){
-    devLog("InitCard - start");
+    //devLog("InitCard - start");
     this.#initStarted = true;
     this.#cacheTableName = "mec_" + this.config.startPath.replace(/\s+/g, "_");
     
@@ -1572,10 +1661,13 @@ class MediaExplorerCard extends i$1 {
     });
     this.currentItemLink = this.navigationMap.currentItem;
     this.#initDone = true;
-    devLog("InitCard - end");
+    //devLog("InitCard - end");
   }
 
-  getCardSize() { return 6; }
+  getCardSize() { 
+    this.#masonryView = true; 
+    return 6; 
+  }
 
   getGridOptions() {
     return {
@@ -1595,7 +1687,7 @@ class MediaExplorerCard extends i$1 {
   }
 
   firstUpdated() {
-    //if (this.config && this._hass && !this.#initStarted) this.#initCard();
+    if (this.#masonryView) this.style.setProperty("--mec-content-max-height", this.config.masonryMaxHeight);
     this.style.setProperty("--mec-icon-size", this.config.itemSize);
   }
 

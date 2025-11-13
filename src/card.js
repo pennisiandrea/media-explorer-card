@@ -13,6 +13,7 @@ class MediaExplorerCard extends LitElement {
   #cacheVersionKey = "cardVersion";
   #initDone = false;
   #initStarted = false;
+  #masonryView = false;
 
   // public fields
   /** @type {NavigationMap} */
@@ -26,6 +27,7 @@ class MediaExplorerCard extends LitElement {
     menuOn: { state: true },
     fullScreenPlayerOn: { state: true },
     browserMode: { state: true },
+    selectionMode: { state: true },
     currentItemForceLitUpdate: { state: true },
     previewImageForceLitUpdate: { state: true },
   };
@@ -41,6 +43,7 @@ class MediaExplorerCard extends LitElement {
     this.menuOn = false;
     this.fullScreenPlayerOn = false;
     this.browserMode = true;
+    this.selectionMode = false;
     this.previewImageForceLitUpdate = 0;
     this.currentItemForceLitUpdate = 0;
   }
@@ -69,13 +72,14 @@ class MediaExplorerCard extends LitElement {
       enablePreview: true,
       savePreview: true,
       itemSize: "200px",
+      masonryMaxHeight: "100%",
       ...config,
     };
     
   }
 
   async #initCard(){
-    devLog("InitCard - start");
+    //devLog("InitCard - start");
     this.#initStarted = true;
     this.#cacheTableName = "mec_" + this.config.startPath.replace(/\s+/g, "_");
     
@@ -107,10 +111,13 @@ class MediaExplorerCard extends LitElement {
     });
     this.currentItemLink = this.navigationMap.currentItem;
     this.#initDone = true;
-    devLog("InitCard - end");
+    //devLog("InitCard - end");
   }
 
-  getCardSize() { return 6; }
+  getCardSize() { 
+    this.#masonryView = true; 
+    return 6; 
+  }
 
   getGridOptions() {
     return {
@@ -130,7 +137,7 @@ class MediaExplorerCard extends LitElement {
   }
 
   firstUpdated() {
-    //if (this.config && this._hass && !this.#initStarted) this.#initCard();
+    if (this.#masonryView) this.style.setProperty("--mec-content-max-height", this.config.masonryMaxHeight);
     this.style.setProperty("--mec-icon-size", this.config.itemSize);
   }
 

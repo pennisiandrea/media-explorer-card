@@ -59,6 +59,9 @@ export const cardStyle = css`
     cursor: not-allowed;
     opacity: 0.6;
   }
+  .mec-button[hidden] {
+    display: none;
+  }
 
   #mec-header-title {
     font-size: var(--paper-font-headline_-_font-size, 20px);
@@ -124,6 +127,7 @@ export const cardStyle = css`
     overflow: auto;
     padding-bottom: 0.5rem;
     min-height: 0;
+    max-height: var(--mec-content-max-height);
   }
 
   #mec-browser-content[hidden],
@@ -155,6 +159,8 @@ export const cardStyle = css`
     border-radius: 6px;
     transition: background 0.2s;
     cursor: pointer;
+
+    position: relative;
   }
 
   .mec-browser-content-item-icon {
@@ -164,6 +170,9 @@ export const cardStyle = css`
     justify-content: center;
     --mdc-icon-size: 100%;
     color: var(--state-icon-color);
+    
+    position: relative;
+    z-index: 1;
   }
 
   .mec-browser-content-item-name {
@@ -175,6 +184,18 @@ export const cardStyle = css`
     height: auto;
     object-fit: cover;
     border-radius: 4px;
+
+    position: relative;
+    z-index: 1;
+  }
+  .mec-browser-content-item-checkbox {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10; /* sta sopra tutto */
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
   }
   .loading {
     text-align: center;

@@ -18,7 +18,7 @@ export class CacheManager {
   static set dbName(dbName) {if (!this.#dbName) this.#dbName = dbName} 
 
   static async addTable(tableName) {
-    devLog("CacheManager.addTable - start");
+    //devLog("CacheManager.addTable - start");
     let result;
 
     if (!this.#tablesNames.includes(tableName)){
@@ -29,12 +29,12 @@ export class CacheManager {
       }
     }
 
-    devLog("CacheManager.addTable - end");
+    //devLog("CacheManager.addTable - end");
     return result;
   }
 
   static async saveOnCache(tableName,dataKey,data) {
-    devLog("CacheManager.saveOnCache - start");
+    //devLog("CacheManager.saveOnCache - start");
 
     let result;
 
@@ -53,12 +53,12 @@ export class CacheManager {
       }
     }
 
-    devLog("CacheManager.saveOnCache - end");
+    //devLog("CacheManager.saveOnCache - end");
     return result;
   }
 
   static async getCachedData(tableName,dataKey) {
-    devLog("CacheManager.getCachedData - start");
+    //devLog("CacheManager.getCachedData - start");
 
     let result;
     if (!this.#tablesNames.includes(tableName)) {
@@ -80,11 +80,11 @@ export class CacheManager {
         result = false;
       }
     }
-    devLog("CacheManager.getCachedData - end");
+    //devLog("CacheManager.getCachedData - end");
     return result;
   }
   static async clearCache(tableName,dataKey) {
-    devLog("CacheManager.clearCache - start");
+    //devLog("CacheManager.clearCache - start");
     let result;
 
     if (!this.#tablesNames.includes(tableName)) {
@@ -104,11 +104,11 @@ export class CacheManager {
       }
     }
 
-    devLog("CacheManager.clearCache - end");
+    //devLog("CacheManager.clearCache - end");
     return result;
   }
   static async #getDB() {
-    devLog("CacheManager.#getDB - start");
+    //devLog("CacheManager.#getDB - start");
     let result;
     try {
       while(this.#waitingCreatingTable > 0) {
@@ -122,12 +122,12 @@ export class CacheManager {
       result = false;
     }
     
-    devLog("CacheManager.#getDB - end");
+    //devLog("CacheManager.#getDB - end");
     return result;
   }
   // Private methods
   static async #createTable(tableName) {
-    devLog("CacheManager.createTable - start");
+    //devLog("CacheManager.createTable - start");
     let result = false;
 
     this.#waitingCreatingTable++;
@@ -167,7 +167,7 @@ export class CacheManager {
       this.#waitingCreatingTable --;
     }
 
-    devLog("CacheManager.createTable - end");
+    //devLog("CacheManager.createTable - end");
     return result;
   }
 }
