@@ -21,6 +21,8 @@ class MediaExplorerCard extends LitElement {
   /** @type {NavigationItem} */
   currentItemLink = null;
 
+  deleteIntegrationAvailable = false;
+
   static properties = {
     hass: { attribute: false },
     config: { attribute: false },
@@ -67,6 +69,7 @@ class MediaExplorerCard extends LitElement {
 
     this.config = {
       showMenuButton: true,
+      showDeleteButton: true,
       showNavigationInfo: true,
       enableCache: true,
       enablePreview: true,
@@ -139,6 +142,7 @@ class MediaExplorerCard extends LitElement {
   firstUpdated() {
     if (this.#masonryView) this.style.setProperty("--mec-content-max-height", this.config.masonryMaxHeight);
     this.style.setProperty("--mec-icon-size", this.config.itemSize);
+    if (this._hass.services?.["delete"]?.["file"]) this.deleteIntegrationAvailable = true;
   }
 
   render() { 

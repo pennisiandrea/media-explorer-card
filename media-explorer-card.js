@@ -86,7 +86,10 @@ const cardStyle = i$4`
   .mec-button[hidden] {
     display: none;
   }
-
+  #mec-button-icon-selectionMode[active] {
+    --icon-primary-color: var(--state-active-color);
+  }
+  
   #mec-header-title {
     font-size: var(--paper-font-headline_-_font-size, 20px);
     color: var(--primary-text-color);
@@ -167,6 +170,7 @@ const cardStyle = i$4`
     gap: 0.5rem;
     overflow-y: auto;
     box-sizing: border-box;
+    align-content: start;
   }
   @media (max-width: 600px) {
     #mec-browser-content {
@@ -203,7 +207,7 @@ const cardStyle = i$4`
     text-align: center;
     word-break: break-word;
   }
-  .mec-preview {
+  .mec-browser-content-item-preview {
     width: 100%;
     height: auto;
     object-fit: cover;
@@ -212,23 +216,69 @@ const cardStyle = i$4`
     position: relative;
     z-index: 1;
   }
-  .mec-browser-content-item-checkbox {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 10; /* sta sopra tutto */
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-  }
   .loading {
     text-align: center;
     height: 100%;
     align-content: center;
   }
+  .mec-browser-content-item-checkbox-container {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+    cursor: pointer;
+  }
+  .mec-browser-content-item-checkbox-container[hidden] {
+    display: none;
+  }
+  .mec-browser-content-item-graphics {
+    position: relative;
+  }
+  .mec-browser-content-item-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0px;
+  }
+  .mec-browser-content-item-checkmark {
+    position: absolute;
+    top: calc(50% - 13px);
+    left: calc(50% - 13px);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: white;
+    border: 1px solid var(--primary-text-color);
+    box-sizing: border-box;
+    transition: 0.2s;
+  }
 
+  .mec-browser-content-item-checkbox-input:checked + .mec-browser-content-item-checkmark {
+    background-color: var(--state-active-color);
+  }
+
+  .mec-browser-content-item-checkbox-input:checked + .mec-browser-content-item-checkmark::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 3px;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+  }
+    
+  /*--------------------------------------------------------------------*/
   /* --- PLAYER AREA --- */
-  #mec-player-content {
+  .mec-player-content {
     flex: 1;
     display: flex;
     align-items: center;
@@ -239,9 +289,9 @@ const cardStyle = i$4`
     box-sizing: border-box;
   }
 
-  #mec-player-content img,
-  #mec-player-content video,
-  #mec-player-content audio {
+  .mec-player-content img,
+  .mec-player-content video,
+  .mec-player-content audio {
     max-width: 100%;
     max-height: 100%;
     width: auto;
@@ -318,43 +368,19 @@ const cardStyle = i$4`
   }
 
   /* --- FULLSCREEN --- */
-  #fullscreen-player {
+  #mec-fullscreen-player-container {
     position: fixed;
     inset: 0;
     z-index: 9999;
-  }
 
-  .fullscreen-overlay {
-    width: 100%;
-    height: 100%;
-    background: var(--card-background-color);
     display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: var(--primary-background-color);
   }
 
-  .fullscreen-overlay img,
-  .fullscreen-overlay video,
-  .fullscreen-overlay audio {
-    width: 90%;
-    height: auto;
-    max-height: 90vh;
-    object-fit: contain;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
-  }
-
-  .fullscreen-close {
-    position: absolute;
-    top: 20px;
-    right: 30px;    
-    padding: 0.5rem;
-    cursor: pointer;
-    background: none;
-    border: 1px solid var(--secondary-text-color, #ccc);
-    color: var(--primary-text-color);
-    border-radius: 50%;
-  }
 `;
 
 const instanceOfAny = (object, constructors) => constructors.some((c) => object instanceof c);
@@ -1012,17 +1038,14 @@ class NavigationItem extends EventTarget {
       if (child) runTask(child);
     };
 
-    // Prepara la coda
     for (const child of this.children) {
       if (!child.previewImage && (child.isVideo || child.isImage)) {
         queue.push(child);
       }
     }
 
-    // Avvia i primi "concurrency" task
     for (let i = 0; i < concurrency; i++) next();
 
-    // Attendi che finiscano tutti
     while ((queue.length > 0 || active > 0) && this.loadChildrenPreview) {
       await new Promise(r => setTimeout(r, 100));
     }
@@ -1267,16 +1290,78 @@ class NavigationMap extends EventTarget {
     }
     //devLog("NavigationMap.clearMemory - end");
   }
-  ClearSelectedItems() {
-    this.selectedItems.length = 0;
+  ClearSelectedChildren() {
+    this.selectedItems.length = 0;    
   }
-  SelectItem(item) {
+  SelectChild(item) {
     this.selectedItems.push(item);
+    this.#sendEventCurrentItemChanged();
   }
-  UnselectItem(item) {
+  UnselectChild(item) {
     const idx = this.selectedItems.findIndex(it => it.mediaContentId === item.mediaContentId);
     if (idx !== -1) this.selectedItems.splice(idx,1);
+    this.#sendEventCurrentItemChanged();
   }
+  DeleteSelectedChildren() {
+    if (this.selectedItems.length > 0){
+      for (const item of this.selectedItems) this.DeleteItem(item);   
+    }
+    this.ClearSelectedChildren();
+  }
+  DeleteItem(item){
+    try {
+      if (item.isFile) {
+        let dummy = false;
+        if (item.mediaContentId === this.currentItem.mediaContentId){
+          dummy = true;
+          if (this.currentItem.siblingIndex < this.currentItem.parent?.lastFileChildIndex) this.openNextSibling();
+          else if (this.currentItem.siblingIndex > this.currentItem.parent?.firstFileChildIndex) this.openPrevSibling(); 
+        }
+
+        this.hass.callService("delete", "file", {
+          file: item.mediaContentId.replace("media-source://media_source","/media")
+        });
+        
+        if (dummy){
+          const idx = this.currentItem.parent.children.findIndex(it => it.mediaContentId === item.mediaContentId);
+          if (idx !== -1) this.currentItem.parent.children.splice(idx,1);
+        }
+        else {
+          const idx = this.currentItem.children.findIndex(it => it.mediaContentId === item.mediaContentId);
+          if (idx !== -1) this.currentItem.children.splice(idx,1);
+          this.#sendEventCurrentItemChanged();
+        }
+
+      }
+      else {
+        this.hass.callService("delete", "files_in_folder", {
+          folder: item.mediaContentId.replace("media-source://media_source","/media"),
+          time: 0,
+          scan_subfolders: true,
+          remove_subfolders: true
+        });
+        new Promise(r => setTimeout(r, 1000)).then( () =>
+          {
+            if (item.mediaContentId === this.currentItem.mediaContentId){
+              this.navigateBack();
+            }
+
+            this.hass.callService("delete", "file", {
+              file: item.mediaContentId.replace("media-source://media_source","/media")
+            });
+          
+            const idx = this.currentItem.children.findIndex(it => it.mediaContentId === item.mediaContentId);
+            if (idx !== -1) this.currentItem.children.splice(idx,1);
+            this.#sendEventCurrentItemChanged();
+          });
+      }
+      
+    }
+    catch (err) {
+      console.error("Failed to delete items:", err);
+    }   
+  }
+
 
   // Private methods
   async #Init() {
@@ -1386,6 +1471,7 @@ const clearIcon = "mdi:trash-can";
 const checkboxIcon = "mdi:checkbox-multiple-outline";
 const checkboxIconMarked = "mdi:checkbox-multiple-marked";
 const trashcanIcon = "mdi:trash-can-outline";
+const cancelIcon = "mdi:cancel";
 
 
 /** @param {import('./card.js').MediaExplorerCard} card */
@@ -1409,19 +1495,22 @@ const renderHeaderBrowser = (card) => x`
 
     <div id="mec-header-browser-buttons">
       <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card); card.selectionMode = false;}}"><ha-icon icon=${backIcon}></button>
-      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${() => {
-        if (card.selectionMode) {
-          card.navigationMap.ClearSelectedItems();
-          card.selectionMode = false;
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${(e) => {
+        if (card.deleteIntegrationAvailable) {
+          card.navigationMap.ClearSelectedChildren();
+          unselectCheckbox(card);
+          card.selectionMode = !card.selectionMode;
         }
-        else card.selectionMode = true;
-      }}"><ha-icon icon=${card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
-      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
-        card.navigationMap.deleteSelectedItems();
-        card.navigationMap.reloadCurrentItem();
-        card.selectionMode = false;      
-        scrollToTop(card);
-      }}"><ha-icon icon=${trashcanIcon}></button>
+      }}"><ha-icon id="mec-button-icon-selectionMode" ?active="${card.selectionMode}" icon=${!card.deleteIntegrationAvailable ? cancelIcon : card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
+        if (card.deleteIntegrationAvailable) {
+          card.navigationMap.DeleteSelectedChildren();
+          card.navigationMap.reloadCurrentItem();
+          card.selectionMode = false;      
+          scrollToTop(card);
+          unselectCheckbox(card);
+        }
+      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
       
     </div>
 
@@ -1434,10 +1523,13 @@ const renderHeaderPlayer = (card) => x`
 
     <div id="mec-header-player-buttons">
       <button class="mec-button" @click="${() => {
-        card.navigationMap.navigateBack();
-        card.fullScreenPlayerOn = false;
+        if (card.fullScreenPlayerOn) card.fullScreenPlayerOn = false;
+        else card.navigationMap.navigateBack();        
       }}"><ha-icon icon=${closeIcon}></button>
-      <button class="mec-button" @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
+        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
+      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+      <button class="mec-button" ?hidden=${card.fullScreenPlayerOn} @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
       <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
       <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
     </div>
@@ -1455,7 +1547,7 @@ const renderHeaderStaticFileds = (card) => x`
     </div>
     
     <div id="mec-header-right-area">
-      <button id="mec-menu-button" ?hidden="${!card.config.showMenuButton}" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
+      <button id="mec-menu-button" ?hidden="${!card.config.showMenuButton || card.fullScreenPlayerOn}" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
     </div>
 `;
 
@@ -1472,7 +1564,7 @@ const renderContentBrowser = (card) => x`
 const renderContentPlayer = (card) => x`
   <div id="mec-content">       
 
-    <div id="mec-player-content">
+    <div class="mec-player-content">
       ${card.currentItemForceLitUpdate && card.navigationMap.loading ? x`<div class="loading">Loading...</div>` : getPlayer(card)}
     </div>
 
@@ -1480,13 +1572,31 @@ const renderContentPlayer = (card) => x`
 `;
 
 const renderPlayerFullscreen = (card) => x`
-  <div id="fullscreen-player">
-    <div class="fullscreen-overlay">
-      ${getPlayer(card)}
-      <button class="fullscreen-close" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
-    </div>
+  <div id="mec-fullscreen-player-container">
+    ${[renderHeaderPlayer(card), renderContentPlayer(card)]}
   </div>
 `;
+/*
+const renderPlayerFullscreen = (card) => html`
+  <div id="mec-fullscreen-player-container">
+    <div class="mec-fullscreen-header">
+      <button class="mec-button" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
+      
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
+        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
+      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
+    </div>    
+    <div id="mec-header-info-area" ?hidden="${!card.config.showNavigationInfo}">
+      <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
+      <div class="mec-header-txt-info" ?hidden="${!card.currentItemLink.isRoot}">./</div>
+    </div>
+    <div class="mec-player-content">
+      ${getPlayer(card)}
+    </div>
+  </div>
+`;*/
 
 const renderMenu = (card) => x`
   <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
@@ -1514,19 +1624,29 @@ const getItemList = (card) => {
     ${c(card.currentItemLink.children,
          (it) => it.mediaContentId,
          (item, index) => x`
-            <div class="mec-browser-content-item" @click="${() => {if (!card.selectionMode) {card.navigationMap.openChild(index); scrollToTop(card);}}}">
-              ${card.selectionMode ? x`<input type="checkbox" class="mec-browser-content-item-checkbox" @change=${(e) => {
-                if(e.target.checked) card.navigationMap.SelectItem(item); 
-                else card.navigationMap.UnselectItem(item);
-              }}>`:``}
-              ${card.previewImageForceLitUpdate && item.previewImage 
-                ? x`<img class="mec-preview" src="${item.previewImage}" loading="lazy" />`
-                : x`<ha-icon class="mec-browser-content-item-icon" icon=${
-                    item.isDirectory ? folderIcon 
-                    : item.isImage ? imageIcon 
-                    : item.isVideo ? videoIcon 
-                    : fileIcon
-                  }></ha-icon>`}
+            <div class="mec-browser-content-item" @click=${() => {
+                if (!card.selectionMode) {
+                  card.navigationMap.openChild(index);
+                  scrollToTop(card);
+                }
+              }}>
+              <div class="mec-browser-content-item-graphics"> 
+                <label ?hidden=${!card.selectionMode} class="mec-browser-content-item-checkbox-container">
+                  <input class="mec-browser-content-item-checkbox-input" type="checkbox" @click=${(e) => {
+                      if (e.target.checked) card.navigationMap.SelectChild(item);
+                      else card.navigationMap.UnselectChild(item);
+                    }}>
+                  <span class="mec-browser-content-item-checkmark"></span>
+                </label>
+                ${card.previewImageForceLitUpdate && item.previewImage 
+                  ? x`<img class="mec-browser-content-item-preview" src="${item.previewImage}" loading="lazy" />`
+                  : x`<ha-icon class="mec-browser-content-item-icon" icon=${
+                      item.isDirectory ? folderIcon 
+                      : item.isImage ? imageIcon 
+                      : item.isVideo ? videoIcon 
+                      : fileIcon
+                    }></ha-icon>`}
+              </div>
               <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
             </div>`
       )}
@@ -1554,6 +1674,11 @@ const scrollToTop = (card) => {
   card.shadowRoot.getElementById("mec-browser-content")?.scrollTo({ top: 0, behavior: 'auto' });
 };
 
+const unselectCheckbox = (card) => {
+  const selectedBoxes = card.shadowRoot.querySelectorAll(".mec-browser-content-item-checkbox-input");
+  if (selectedBoxes) selectedBoxes.forEach(item => item.checked = false);
+};
+
 class MediaExplorerCard extends i$1 {
   // private fields
   #version = "20251111a";
@@ -1570,6 +1695,8 @@ class MediaExplorerCard extends i$1 {
   navigationMap;
   /** @type {NavigationItem} */
   currentItemLink = null;
+
+  deleteIntegrationAvailable = false;
 
   static properties = {
     hass: { attribute: false },
@@ -1617,6 +1744,7 @@ class MediaExplorerCard extends i$1 {
 
     this.config = {
       showMenuButton: true,
+      showDeleteButton: true,
       showNavigationInfo: true,
       enableCache: true,
       enablePreview: true,
@@ -1689,6 +1817,7 @@ class MediaExplorerCard extends i$1 {
   firstUpdated() {
     if (this.#masonryView) this.style.setProperty("--mec-content-max-height", this.config.masonryMaxHeight);
     this.style.setProperty("--mec-icon-size", this.config.itemSize);
+    if (this._hass.services?.["delete"]?.["file"]) this.deleteIntegrationAvailable = true;
   }
 
   render() { 

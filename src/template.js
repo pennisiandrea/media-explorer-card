@@ -17,6 +17,7 @@ const clearIcon = "mdi:trash-can";
 const checkboxIcon = "mdi:checkbox-multiple-outline";
 const checkboxIconMarked = "mdi:checkbox-multiple-marked";
 const trashcanIcon = "mdi:trash-can-outline";
+const cancelIcon = "mdi:cancel";
 
 
 /** @param {import('./card.js').MediaExplorerCard} card */
@@ -40,19 +41,22 @@ const renderHeaderBrowser = (card) => html`
 
     <div id="mec-header-browser-buttons">
       <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card); card.selectionMode = false;}}"><ha-icon icon=${backIcon}></button>
-      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${() => {
-        if (card.selectionMode) {
-          card.navigationMap.ClearSelectedItems();
-          card.selectionMode = false;
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${(e) => {
+        if (card.deleteIntegrationAvailable) {
+          card.navigationMap.ClearSelectedChildren();
+          unselectCheckbox(card);
+          card.selectionMode = !card.selectionMode;
         }
-        else card.selectionMode = true;
-      }}"><ha-icon icon=${card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
-      <button class="mec-button" ?hidden=${true} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
-        card.navigationMap.deleteSelectedItems();
-        card.navigationMap.reloadCurrentItem();
-        card.selectionMode = false;      
-        scrollToTop(card);
-      }}"><ha-icon icon=${trashcanIcon}></button>
+      }}"><ha-icon id="mec-button-icon-selectionMode" ?active="${card.selectionMode}" icon=${!card.deleteIntegrationAvailable ? cancelIcon : card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
+        if (card.deleteIntegrationAvailable) {
+          card.navigationMap.DeleteSelectedChildren();
+          card.navigationMap.reloadCurrentItem();
+          card.selectionMode = false;      
+          scrollToTop(card);
+          unselectCheckbox(card);
+        }
+      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
       
     </div>
 
@@ -65,10 +69,13 @@ const renderHeaderPlayer = (card) => html`
 
     <div id="mec-header-player-buttons">
       <button class="mec-button" @click="${() => {
-        card.navigationMap.navigateBack();
-        card.fullScreenPlayerOn = false;
+        if (card.fullScreenPlayerOn) card.fullScreenPlayerOn = false
+        else card.navigationMap.navigateBack();        
       }}"><ha-icon icon=${closeIcon}></button>
-      <button class="mec-button" @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
+        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
+      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+      <button class="mec-button" ?hidden=${card.fullScreenPlayerOn} @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
       <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
       <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
     </div>
@@ -86,7 +93,7 @@ const renderHeaderStaticFileds = (card) => html`
     </div>
     
     <div id="mec-header-right-area">
-      <button id="mec-menu-button" ?hidden="${!card.config.showMenuButton}" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
+      <button id="mec-menu-button" ?hidden="${!card.config.showMenuButton || card.fullScreenPlayerOn}" class="mec-button" @click="${() => card.menuOn = true}"><ha-icon icon=${dotsIcon}></button>
     </div>
 `;
 
@@ -103,7 +110,7 @@ const renderContentBrowser = (card) => html`
 const renderContentPlayer = (card) => html`
   <div id="mec-content">       
 
-    <div id="mec-player-content">
+    <div class="mec-player-content">
       ${card.currentItemForceLitUpdate && card.navigationMap.loading ? html`<div class="loading">Loading...</div>` : getPlayer(card)}
     </div>
 
@@ -111,13 +118,31 @@ const renderContentPlayer = (card) => html`
 `;
 
 const renderPlayerFullscreen = (card) => html`
-  <div id="fullscreen-player">
-    <div class="fullscreen-overlay">
-      ${getPlayer(card)}
-      <button class="fullscreen-close" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
-    </div>
+  <div id="mec-fullscreen-player-container">
+    ${[renderHeaderPlayer(card), renderContentPlayer(card)]}
   </div>
 `;
+/*
+const renderPlayerFullscreen = (card) => html`
+  <div id="mec-fullscreen-player-container">
+    <div class="mec-fullscreen-header">
+      <button class="mec-button" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
+      
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
+        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
+      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
+      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
+    </div>    
+    <div id="mec-header-info-area" ?hidden="${!card.config.showNavigationInfo}">
+      <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
+      <div class="mec-header-txt-info" ?hidden="${!card.currentItemLink.isRoot}">./</div>
+    </div>
+    <div class="mec-player-content">
+      ${getPlayer(card)}
+    </div>
+  </div>
+`;*/
 
 const renderMenu = (card) => html`
   <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
@@ -145,19 +170,29 @@ const getItemList = (card) => {
     ${repeat(card.currentItemLink.children,
          (it) => it.mediaContentId,
          (item, index) => html`
-            <div class="mec-browser-content-item" @click="${() => {if (!card.selectionMode) {card.navigationMap.openChild(index); scrollToTop(card);}}}">
-              ${card.selectionMode ? html`<input type="checkbox" class="mec-browser-content-item-checkbox" @change=${(e) => {
-                if(e.target.checked) card.navigationMap.SelectItem(item); 
-                else card.navigationMap.UnselectItem(item);
-              }}>`:``}
-              ${card.previewImageForceLitUpdate && item.previewImage 
-                ? html`<img class="mec-preview" src="${item.previewImage}" loading="lazy" />`
-                : html`<ha-icon class="mec-browser-content-item-icon" icon=${
-                    item.isDirectory ? folderIcon 
-                    : item.isImage ? imageIcon 
-                    : item.isVideo ? videoIcon 
-                    : fileIcon
-                  }></ha-icon>`}
+            <div class="mec-browser-content-item" @click=${() => {
+                if (!card.selectionMode) {
+                  card.navigationMap.openChild(index);
+                  scrollToTop(card);
+                }
+              }}>
+              <div class="mec-browser-content-item-graphics"> 
+                <label ?hidden=${!card.selectionMode} class="mec-browser-content-item-checkbox-container">
+                  <input class="mec-browser-content-item-checkbox-input" type="checkbox" @click=${(e) => {
+                      if (e.target.checked) card.navigationMap.SelectChild(item);
+                      else card.navigationMap.UnselectChild(item);
+                    }}>
+                  <span class="mec-browser-content-item-checkmark"></span>
+                </label>
+                ${card.previewImageForceLitUpdate && item.previewImage 
+                  ? html`<img class="mec-browser-content-item-preview" src="${item.previewImage}" loading="lazy" />`
+                  : html`<ha-icon class="mec-browser-content-item-icon" icon=${
+                      item.isDirectory ? folderIcon 
+                      : item.isImage ? imageIcon 
+                      : item.isVideo ? videoIcon 
+                      : fileIcon
+                    }></ha-icon>`}
+              </div>
               <div class="mec-browser-content-item-name">${item.title ?? "NA"}</div>
             </div>`
       )}
@@ -183,4 +218,9 @@ const getPlayer = (card) => {
 
 const scrollToTop = (card) => {
   card.shadowRoot.getElementById("mec-browser-content")?.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+const unselectCheckbox = (card) => {
+  const selectedBoxes = card.shadowRoot.querySelectorAll(".mec-browser-content-item-checkbox-input");
+  if (selectedBoxes) selectedBoxes.forEach(item => item.checked = false);
 }

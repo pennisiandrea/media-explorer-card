@@ -62,7 +62,10 @@ export const cardStyle = css`
   .mec-button[hidden] {
     display: none;
   }
-
+  #mec-button-icon-selectionMode[active] {
+    --icon-primary-color: var(--state-active-color);
+  }
+  
   #mec-header-title {
     font-size: var(--paper-font-headline_-_font-size, 20px);
     color: var(--primary-text-color);
@@ -143,6 +146,7 @@ export const cardStyle = css`
     gap: 0.5rem;
     overflow-y: auto;
     box-sizing: border-box;
+    align-content: start;
   }
   @media (max-width: 600px) {
     #mec-browser-content {
@@ -179,7 +183,7 @@ export const cardStyle = css`
     text-align: center;
     word-break: break-word;
   }
-  .mec-preview {
+  .mec-browser-content-item-preview {
     width: 100%;
     height: auto;
     object-fit: cover;
@@ -188,23 +192,69 @@ export const cardStyle = css`
     position: relative;
     z-index: 1;
   }
-  .mec-browser-content-item-checkbox {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 10; /* sta sopra tutto */
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-  }
   .loading {
     text-align: center;
     height: 100%;
     align-content: center;
   }
+  .mec-browser-content-item-checkbox-container {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+    cursor: pointer;
+  }
+  .mec-browser-content-item-checkbox-container[hidden] {
+    display: none;
+  }
+  .mec-browser-content-item-graphics {
+    position: relative;
+  }
+  .mec-browser-content-item-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0px;
+  }
+  .mec-browser-content-item-checkmark {
+    position: absolute;
+    top: calc(50% - 13px);
+    left: calc(50% - 13px);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: white;
+    border: 1px solid var(--primary-text-color);
+    box-sizing: border-box;
+    transition: 0.2s;
+  }
 
+  .mec-browser-content-item-checkbox-input:checked + .mec-browser-content-item-checkmark {
+    background-color: var(--state-active-color);
+  }
+
+  .mec-browser-content-item-checkbox-input:checked + .mec-browser-content-item-checkmark::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 3px;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+  }
+    
+  /*--------------------------------------------------------------------*/
   /* --- PLAYER AREA --- */
-  #mec-player-content {
+  .mec-player-content {
     flex: 1;
     display: flex;
     align-items: center;
@@ -215,9 +265,9 @@ export const cardStyle = css`
     box-sizing: border-box;
   }
 
-  #mec-player-content img,
-  #mec-player-content video,
-  #mec-player-content audio {
+  .mec-player-content img,
+  .mec-player-content video,
+  .mec-player-content audio {
     max-width: 100%;
     max-height: 100%;
     width: auto;
@@ -294,41 +344,17 @@ export const cardStyle = css`
   }
 
   /* --- FULLSCREEN --- */
-  #fullscreen-player {
+  #mec-fullscreen-player-container {
     position: fixed;
     inset: 0;
     z-index: 9999;
-  }
 
-  .fullscreen-overlay {
-    width: 100%;
-    height: 100%;
-    background: var(--card-background-color);
     display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: var(--primary-background-color);
   }
 
-  .fullscreen-overlay img,
-  .fullscreen-overlay video,
-  .fullscreen-overlay audio {
-    width: 90%;
-    height: auto;
-    max-height: 90vh;
-    object-fit: contain;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
-  }
-
-  .fullscreen-close {
-    position: absolute;
-    top: 20px;
-    right: 30px;    
-    padding: 0.5rem;
-    cursor: pointer;
-    background: none;
-    border: 1px solid var(--secondary-text-color, #ccc);
-    color: var(--primary-text-color);
-    border-radius: 50%;
-  }
 `;

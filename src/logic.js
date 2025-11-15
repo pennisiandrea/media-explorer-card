@@ -196,17 +196,14 @@ export class NavigationItem extends EventTarget {
       if (child) runTask(child);
     };
 
-    // Prepara la coda
     for (const child of this.children) {
       if (!child.previewImage && (child.isVideo || child.isImage)) {
         queue.push(child);
       }
     }
 
-    // Avvia i primi "concurrency" task
     for (let i = 0; i < concurrency; i++) next();
 
-    // Attendi che finiscano tutti
     while ((queue.length > 0 || active > 0) && this.loadChildrenPreview) {
       await new Promise(r => setTimeout(r, 100));
     }
@@ -451,16 +448,78 @@ export class NavigationMap extends EventTarget {
     }
     //devLog("NavigationMap.clearMemory - end");
   }
-  ClearSelectedItems() {
-    this.selectedItems.length = 0;
+  ClearSelectedChildren() {
+    this.selectedItems.length = 0;    
   }
-  SelectItem(item) {
+  SelectChild(item) {
     this.selectedItems.push(item);
+    this.#sendEventCurrentItemChanged();
   }
-  UnselectItem(item) {
+  UnselectChild(item) {
     const idx = this.selectedItems.findIndex(it => it.mediaContentId === item.mediaContentId);
     if (idx !== -1) this.selectedItems.splice(idx,1);
+    this.#sendEventCurrentItemChanged();
   }
+  DeleteSelectedChildren() {
+    if (this.selectedItems.length > 0){
+      for (const item of this.selectedItems) this.DeleteItem(item);   
+    }
+    this.ClearSelectedChildren();
+  }
+  DeleteItem(item){
+    try {
+      if (item.isFile) {
+        let dummy = false;
+        if (item.mediaContentId === this.currentItem.mediaContentId){
+          dummy = true;
+          if (this.currentItem.siblingIndex < this.currentItem.parent?.lastFileChildIndex) this.openNextSibling();
+          else if (this.currentItem.siblingIndex > this.currentItem.parent?.firstFileChildIndex) this.openPrevSibling(); 
+        }
+
+        this.hass.callService("delete", "file", {
+          file: item.mediaContentId.replace("media-source://media_source","/media")
+        });
+        
+        if (dummy){
+          const idx = this.currentItem.parent.children.findIndex(it => it.mediaContentId === item.mediaContentId);
+          if (idx !== -1) this.currentItem.parent.children.splice(idx,1);
+        }
+        else {
+          const idx = this.currentItem.children.findIndex(it => it.mediaContentId === item.mediaContentId);
+          if (idx !== -1) this.currentItem.children.splice(idx,1);
+          this.#sendEventCurrentItemChanged();
+        }
+
+      }
+      else {
+        this.hass.callService("delete", "files_in_folder", {
+          folder: item.mediaContentId.replace("media-source://media_source","/media"),
+          time: 0,
+          scan_subfolders: true,
+          remove_subfolders: true
+        });
+        new Promise(r => setTimeout(r, 1000)).then( () =>
+          {
+            if (item.mediaContentId === this.currentItem.mediaContentId){
+              this.navigateBack();
+            }
+
+            this.hass.callService("delete", "file", {
+              file: item.mediaContentId.replace("media-source://media_source","/media")
+            });
+          
+            const idx = this.currentItem.children.findIndex(it => it.mediaContentId === item.mediaContentId);
+            if (idx !== -1) this.currentItem.children.splice(idx,1);
+            this.#sendEventCurrentItemChanged();
+          });
+      }
+      
+    }
+    catch (err) {
+      console.error("Failed to delete items:", err);
+    }   
+  }
+
 
   // Private methods
   async #Init() {

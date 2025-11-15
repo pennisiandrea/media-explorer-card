@@ -19,6 +19,7 @@ Supports **image viewing** and **video playback** with a simple user interface.
 * Option to load thumbnails for images and videos.
 * Display images and play videos inline or in fullscreen mode.
 * Smart navigation system, with optional caching for instant loading.
+* Delete files and folders.
 
 ## Usage
 
@@ -28,6 +29,7 @@ type: custom:media-explorer-card
 startPath: media-source://media_source/home_nas_antifurto/telecamere
 title: Archivio telecamere
 showMenuButton: true
+showDeleteButton: false
 showNavigationInfo: true
 enableCache: true
 enablePreview: true
@@ -39,17 +41,18 @@ grid_options:
   rows: 7
 ```
 
-| Option             | Type   | Description                                       | Optional | default value |
-| ------------------ | ------ | ---------------------------------------------     | -------- | ------------- |
-| startPath          | string | Start directory                                   | false    |               |
-| title              | string | Title of the card                                 | true     | null          |
-| showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner      | true     | true          |
-| showNavigationInfo | bool   | Shows the path & file name in the header          | true     | true          |
-| enableCache        | bool   | Enable the caching system (see description below) | true     | true          |
-| enablePreview      | bool   | Enable the thumbnail load of images and videos    | true     | true          |
-| savePreview        | bool   | Saves the thumbnail in the volatile memory        | true     | true          |
-| itemSize           | string | Size of the folders/files icons or previews       | true     | "200px"       |
-| masonryMaxHeight   | string | Max height of the card - useful on masonry view   | true     | "100%"        |
+| Option             | Type   | Description                                                | Optional | default value |
+| ------------------ | ------ | ---------------------------------------------------------  | -------- | ------------- |
+| startPath          | string | Start directory                                            | false    |               |
+| title              | string | Title of the card                                          | true     | null          |
+| showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner               | true     | true          |
+| showDeleteButton   | bool   | Shows the select & delete button (read description below!) | true     | false         |
+| showNavigationInfo | bool   | Shows the path & file name in the header                   | true     | true          |
+| enableCache        | bool   | Enable the caching system (see description below)          | true     | true          |
+| enablePreview      | bool   | Enable the thumbnail load of images and videos             | true     | true          |
+| savePreview        | bool   | Saves the thumbnail in the volatile memory                 | true     | true          |
+| itemSize           | string | Size of the folders/files icons or previews                | true     | "200px"       |
+| masonryMaxHeight   | string | Max height of the card - useful on masonry view            | true     | "100%"        |
 
 Use grid_options to size the card in your dashboard.
 
@@ -63,6 +66,15 @@ With enablePreview option enabled, the card loads thumbnails for images and vide
 With savePreview option enabled, thumbnails are saved in the volatile memory of the browser. This means that thumbnails already loaded will be instantly available and data will be completely erased with the next webpage reload. Thumbnails are never saved in the non-volatile memory.
 
 ![Card Screenshot](./screenshots/screenshot_5.png)
+
+### Delete feauture
+**This feature works only if you have installed the custom integration https://github.com/chomupashchuk/delete-file-home-assistant**
+With showDeleteButton option enabled, two new buttons become visible:
+![Card Screenshot](./screenshots/screenshot_6.png)
+The first one activates the selection mode, allowing the user to select one or more items in the browser. The other deletes all selected items.
+![Card Screenshot](./screenshots/screenshot_7.png)  
+Deleted items cannot be recovered, so be careful.
+
 
 ## HACS Installation Instructions (recommended)
 Use this link to directly go to the repository in HACS
