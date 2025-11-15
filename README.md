@@ -3,27 +3,31 @@
 
 ![Project Maintenance][maintenance-shield]
 
-A **Lovelace custom card** for Home Assistant that allows browsing media resources, similar to the built-in "Media" dashboard.  
-Supports **image viewing** and **video playback** with a simple user interface.
+A lightweight and intuitive Lovelace custom card for **Home Assistant** that enables easy navigation of local and remote media resources.
+Browse folders, preview images, and play videos **directly within your dashboard** — without leaving the page.
 
 ---
+## Features
+* Browse media folders and files directly from your dashboard.
+* Option to load thumbnails for images and videos.
+* Image preview and video playback in-card or fullscreen mode
+* Smart navigation system, with optional caching for instant loading.
+* Delete files and folders.
 
-## Screenshot
+## Screenshots
 
 ![Card Screenshot](./screenshots/screenshot_1.png)
 ![Card Screenshot](./screenshots/screenshot_2.png)
 ![Card Screenshot](./screenshots/screenshot_3.png)
 
-## Features
-* Browse media folders and files directly from your dashboard.
-* Option to load thumbnails for images and videos.
-* Display images and play videos inline or in fullscreen mode.
-* Smart navigation system, with optional caching for instant loading.
-* Delete files and folders.
-
 ## Usage
+Minimal implementation:
+```yaml
+type: custom:media-explorer-card
+startPath: media-source://media_source/home_nas_antifurto/telecamere
+```
 
-Example:
+Full-options implementation:
 ```yaml
 type: custom:media-explorer-card
 startPath: media-source://media_source/home_nas_antifurto/telecamere
@@ -67,13 +71,13 @@ With savePreview option enabled, thumbnails are saved in the volatile memory of 
 
 ![Card Screenshot](./screenshots/screenshot_5.png)
 
-### Delete feauture
+### Delete feature
 **This feature works only if you have installed the custom integration https://github.com/chomupashchuk/delete-file-home-assistant**
-With showDeleteButton option enabled, two new buttons become visible:
-![Card Screenshot](./screenshots/screenshot_6.png)
+
+With showDeleteButton option enabled, two new buttons become visible.
 The first one activates the selection mode, allowing the user to select one or more items in the browser. The other deletes all selected items.
 ![Card Screenshot](./screenshots/screenshot_7.png)  
-Deleted items cannot be recovered, so be careful.
+Be careful, deleted items cannot be recovered.
 
 
 ## HACS Installation Instructions (recommended)
@@ -90,9 +94,9 @@ or
 
 ## Manual Installation
 
-- Download media-explorer-card.js file from the latest release.
-- Put media-explorer-card.js file into your config/www folder.
-- Add reference to media-explorer-card.js in Dashboard:
+1. Download media-explorer-card.js file from the latest release.
+2. Put media-explorer-card.js file into your config/www folder.
+3. Add reference to media-explorer-card.js in Dashboard:
     Settings → Dashboards → More Options icon → Resources → Add Resource → Set Url as /local/media-explorer-card.js → Set Resource type as JavaScript Module. Note: If you do not see the Resources menu, you will need to enable Advanced Mode in your User Profile
 
 ***
