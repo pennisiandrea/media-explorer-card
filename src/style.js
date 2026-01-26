@@ -30,6 +30,7 @@ export const cardStyle = css`
     grid-template-columns: 1fr auto 1fr;
     grid-template-rows: 1fr auto;
     align-items: center; 
+    direction: ltr;
   }
 
   #mec-header-browser-buttons,
