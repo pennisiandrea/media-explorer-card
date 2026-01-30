@@ -40,23 +40,25 @@ enablePreview: true
 savePreview: true
 itemSize: 200px
 masonryMaxHeight: 100%
+itemsOrder: 1
 grid_options:
   columns: 20
   rows: 7
 ```
 
-| Option             | Type   | Description                                                | Optional | default value |
-| ------------------ | ------ | ---------------------------------------------------------  | -------- | ------------- |
-| startPath          | string | Start directory                                            | false    |               |
-| title              | string | Title of the card                                          | true     | null          |
-| showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner               | true     | true          |
-| showDeleteButton   | bool   | Shows the select & delete button (read description below!) | true     | false         |
-| showNavigationInfo | bool   | Shows the path & file name in the header                   | true     | true          |
-| enableCache        | bool   | Enable the caching system (see description below)          | true     | true          |
-| enablePreview      | bool   | Enable the thumbnail load of images and videos             | true     | true          |
-| savePreview        | bool   | Saves the thumbnail in the volatile memory                 | true     | true          |
-| itemSize           | string | Size of the folders/files icons or previews                | true     | "200px"       |
-| masonryMaxHeight   | string | Max height of the card - useful on masonry view            | true     | "100%"        |
+| Option             | Type   | Description                                                           | Optional | default value |
+| ------------------ | ------ | ----------------------------------------------------------------------| -------- | ------------- |
+| startPath          | string | Start directory                                                       | false    |               |
+| title              | string | Title of the card                                                     | true     | null          |
+| showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner                          | true     | true          |
+| showDeleteButton   | bool   | Shows the select & delete button (read description below!)            | true     | false         |
+| showNavigationInfo | bool   | Shows the path & file name in the header                              | true     | true          |
+| enableCache        | bool   | Enable the caching system (see description below)                     | true     | true          |
+| enablePreview      | bool   | Enable the thumbnail load of images and videos                        | true     | true          |
+| savePreview        | bool   | Saves the thumbnail in the volatile memory                            | true     | true          |
+| itemSize           | string | Size of the folders/files icons or previews                           | true     | "200px"       |
+| masonryMaxHeight   | string | Max height of the card - useful on masonry view                       | true     | "100%"        |
+| itemsOrder         | numeric| Order of the items based on creation date. 1=ascending 2=descending   | true     | 1             |
 
 Use grid_options to size the card in your dashboard.
 

@@ -76,6 +76,7 @@ class MediaExplorerCard extends LitElement {
       savePreview: true,
       itemSize: "200px",
       masonryMaxHeight: "100%",
+      itemsOrder: 1,
       ...config,
     };
     
@@ -99,9 +100,9 @@ class MediaExplorerCard extends LitElement {
 
     if (!this.config.enableCache){
       await CacheManager.clearCache(this.#cacheTableName,this.#cacheMapKey);
-      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath,this.config.enablePreview,this.config.savePreview);
+      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder);
     }
-    else this.navigationMap = new NavigationMap(this._hass,this.#cacheTableName,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview);
+    else this.navigationMap = new NavigationMap(this._hass,this.#cacheTableName,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder);
 
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;

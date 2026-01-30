@@ -113,7 +113,7 @@ export class NavigationItem extends EventTarget {
     return returnVal;
   }
 
-  async loadChildren() {
+  async loadChildren(previewLoadOrder = 1) {
     //devLog("NavigationItem.loadChildren - start");
     /*  returnVal
     0 = nothing changed
@@ -152,7 +152,7 @@ export class NavigationItem extends EventTarget {
 
       this.children = newChildren;
 
-      if (this.#enablePreview) this.#loadChildrenPreviewImage();
+      if (this.#enablePreview) this.#loadChildrenPreviewImage(previewLoadOrder);
 
       this.#lastUpdateDT = Date.now();
 
@@ -170,7 +170,7 @@ export class NavigationItem extends EventTarget {
     for (const child of this.children) child.clearURL();
   }
 
-  async #loadChildrenPreviewImage(concurrency = 8) {
+  async #loadChildrenPreviewImage(order = 1, concurrency = 8) {
     //devLog("NavigationItem.#loadChildrenPreviewImage - start");
 
     this.loadChildrenPreview = true;
@@ -196,9 +196,19 @@ export class NavigationItem extends EventTarget {
       if (child) runTask(child);
     };
 
-    for (const child of this.children) {
-      if (!child.previewImage && (child.isVideo || child.isImage)) {
-        queue.push(child);
+    if (order == 1) {
+      for (const child of this.children) {
+        if (!child.previewImage && (child.isVideo || child.isImage)) {
+          queue.push(child);
+        }
+      }
+    }
+    else {
+      for (let i = this.children.length - 1; i >= 0; i--) {
+        const child = this.children[i];
+        if (!child.previewImage && (child.isVideo || child.isImage)) {
+          queue.push(child);
+        }
       }
     }
 
@@ -300,6 +310,7 @@ export class NavigationMap extends EventTarget {
   #startPath = "";
   #enablePreview = null;
   #savePreview = null;
+  #previewLoadOrder = 1;
 
   // Public fields
   /** @type {NavigationItem} */
@@ -311,7 +322,7 @@ export class NavigationMap extends EventTarget {
   selectedItems=[];
 
   // Constructor
-  constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview) { 
+  constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview, previewLoadOrder) { 
     super();
     
     this.hass = hass;
@@ -320,6 +331,7 @@ export class NavigationMap extends EventTarget {
     this.#startPath = startPath;
     this.#enablePreview = enablePreview;
     this.#savePreview = savePreview;
+    this.#previewLoadOrder = previewLoadOrder;
 
     this.#Init();
   }
@@ -363,14 +375,14 @@ export class NavigationMap extends EventTarget {
     }
     //devLog("NavigationMap.reloadCurrentItem - end");
   }
-  openChild(index) {
+  openChild(child) {
     //devLog("NavigationMap.openChild - start");
     if (this.#initDone) {
       if (!this.loading) {
-        if (index >= 0 && index < this.currentItem.children.length) {
+        if (child) {
           this.currentItem.stopOperations();
-          this.currentItem = this.currentItem.children[index];      
-          this.#openCurrentItem(); 
+          this.currentItem = child;      
+          this.#openCurrentItem();
         }
       }
     }
@@ -520,7 +532,6 @@ export class NavigationMap extends EventTarget {
     }   
   }
 
-
   // Private methods
   async #Init() {
     //devLog("NavigationMap.#Init - start");
@@ -565,7 +576,7 @@ export class NavigationMap extends EventTarget {
   #loadCurrentItemChildren() {
     //devLog("NavigationMap.#loadCurrentItemChildren - start");
     this.loading = true;
-    this.currentItem.loadChildren().then(returnVal => {
+    this.currentItem.loadChildren(this.#previewLoadOrder).then(returnVal => {
       this.loading = false;
       if(returnVal == 1) {
         this.#sendEventCurrentItemChanged();

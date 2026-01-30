@@ -54,6 +54,7 @@ const cardStyle = i$4`
     grid-template-columns: 1fr auto 1fr;
     grid-template-rows: 1fr auto;
     align-items: center; 
+    direction: ltr;
   }
 
   #mec-header-browser-buttons,
@@ -955,7 +956,7 @@ class NavigationItem extends EventTarget {
     return returnVal;
   }
 
-  async loadChildren() {
+  async loadChildren(previewLoadOrder = 1) {
     //devLog("NavigationItem.loadChildren - start");
     /*  returnVal
     0 = nothing changed
@@ -994,7 +995,7 @@ class NavigationItem extends EventTarget {
 
       this.children = newChildren;
 
-      if (this.#enablePreview) this.#loadChildrenPreviewImage();
+      if (this.#enablePreview) this.#loadChildrenPreviewImage(previewLoadOrder);
 
       this.#lastUpdateDT = Date.now();
 
@@ -1012,7 +1013,7 @@ class NavigationItem extends EventTarget {
     for (const child of this.children) child.clearURL();
   }
 
-  async #loadChildrenPreviewImage(concurrency = 8) {
+  async #loadChildrenPreviewImage(order = 1, concurrency = 8) {
     //devLog("NavigationItem.#loadChildrenPreviewImage - start");
 
     this.loadChildrenPreview = true;
@@ -1038,9 +1039,19 @@ class NavigationItem extends EventTarget {
       if (child) runTask(child);
     };
 
-    for (const child of this.children) {
-      if (!child.previewImage && (child.isVideo || child.isImage)) {
-        queue.push(child);
+    if (order == 1) {
+      for (const child of this.children) {
+        if (!child.previewImage && (child.isVideo || child.isImage)) {
+          queue.push(child);
+        }
+      }
+    }
+    else {
+      for (let i = this.children.length - 1; i >= 0; i--) {
+        const child = this.children[i];
+        if (!child.previewImage && (child.isVideo || child.isImage)) {
+          queue.push(child);
+        }
       }
     }
 
@@ -1142,6 +1153,7 @@ class NavigationMap extends EventTarget {
   #startPath = "";
   #enablePreview = null;
   #savePreview = null;
+  #previewLoadOrder = 1;
 
   // Public fields
   /** @type {NavigationItem} */
@@ -1153,7 +1165,7 @@ class NavigationMap extends EventTarget {
   selectedItems=[];
 
   // Constructor
-  constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview) { 
+  constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview, previewLoadOrder) { 
     super();
     
     this.hass = hass;
@@ -1162,6 +1174,7 @@ class NavigationMap extends EventTarget {
     this.#startPath = startPath;
     this.#enablePreview = enablePreview;
     this.#savePreview = savePreview;
+    this.#previewLoadOrder = previewLoadOrder;
 
     this.#Init();
   }
@@ -1205,14 +1218,14 @@ class NavigationMap extends EventTarget {
     }
     //devLog("NavigationMap.reloadCurrentItem - end");
   }
-  openChild(index) {
+  openChild(child) {
     //devLog("NavigationMap.openChild - start");
     if (this.#initDone) {
       if (!this.loading) {
-        if (index >= 0 && index < this.currentItem.children.length) {
+        if (child) {
           this.currentItem.stopOperations();
-          this.currentItem = this.currentItem.children[index];      
-          this.#openCurrentItem(); 
+          this.currentItem = child;      
+          this.#openCurrentItem();
         }
       }
     }
@@ -1362,7 +1375,6 @@ class NavigationMap extends EventTarget {
     }   
   }
 
-
   // Private methods
   async #Init() {
     //devLog("NavigationMap.#Init - start");
@@ -1407,7 +1419,7 @@ class NavigationMap extends EventTarget {
   #loadCurrentItemChildren() {
     //devLog("NavigationMap.#loadCurrentItemChildren - start");
     this.loading = true;
-    this.currentItem.loadChildren().then(returnVal => {
+    this.currentItem.loadChildren(this.#previewLoadOrder).then(returnVal => {
       this.loading = false;
       if(returnVal == 1) {
         this.#sendEventCurrentItemChanged();
@@ -1495,14 +1507,14 @@ const renderHeaderBrowser = (card) => x`
 
     <div id="mec-header-browser-buttons">
       <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card); card.selectionMode = false;}}"><ha-icon icon=${backIcon}></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${(e) => {
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.deleteIntegrationAvailable || (!card.selectionMode && card.currentItemLink.children.length == 0)}" @click="${(e) => {
         if (card.deleteIntegrationAvailable) {
           card.navigationMap.ClearSelectedChildren();
           unselectCheckbox(card);
           card.selectionMode = !card.selectionMode;
         }
-      }}"><ha-icon id="mec-button-icon-selectionMode" ?active="${card.selectionMode}" icon=${!card.deleteIntegrationAvailable ? cancelIcon : card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
+      }}"><ha-icon id="mec-button-icon-selectionMode" ?active="${card.selectionMode}" icon=${card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.deleteIntegrationAvailable || (!card.selectionMode || card.navigationMap.selectedItems.length == 0)}" @click="${() => {
         if (card.deleteIntegrationAvailable) {
           card.navigationMap.DeleteSelectedChildren();
           card.navigationMap.reloadCurrentItem();
@@ -1510,7 +1522,7 @@ const renderHeaderBrowser = (card) => x`
           scrollToTop(card);
           unselectCheckbox(card);
         }
-      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+      }}"><ha-icon icon=${trashcanIcon}></button>
       
     </div>
 
@@ -1518,25 +1530,46 @@ const renderHeaderBrowser = (card) => x`
   </div>
 `;
 
-const renderHeaderPlayer = (card) => x`
-  <div id="mec-header">
+const renderHeaderPlayer = (card) => {
+  
+  const prevDisabled = card.config.itemsOrder == 1
+    ? card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex
+    : card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex;
 
-    <div id="mec-header-player-buttons">
-      <button class="mec-button" @click="${() => {
-        if (card.fullScreenPlayerOn) card.fullScreenPlayerOn = false;
-        else card.navigationMap.navigateBack();        
-      }}"><ha-icon icon=${closeIcon}></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
-        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
-      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
-      <button class="mec-button" ?hidden=${card.fullScreenPlayerOn} @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
+  const nextDisabled = card.config.itemsOrder == 1
+    ? card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex
+    : card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex;
+
+  const prevAction = card.config.itemsOrder == 1
+    ? () => card.navigationMap.openPrevSibling()
+    : () => card.navigationMap.openNextSibling();
+
+  const nextAction = card.config.itemsOrder == 1
+    ? () => card.navigationMap.openNextSibling()
+    : () => card.navigationMap.openPrevSibling();
+
+  return x`
+    <div id="mec-header">
+
+      <div id="mec-header-player-buttons">
+        <button class="mec-button" @click="${() => {
+          if (card.fullScreenPlayerOn) card.fullScreenPlayerOn = false;
+          else card.navigationMap.navigateBack();        
+        }}"><ha-icon icon=${closeIcon}></button>
+        <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
+          if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
+        }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+        <button class="mec-button" ?hidden=${card.fullScreenPlayerOn} @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
+        
+        <button class="mec-button" ?disabled="${prevDisabled}" @click=${prevAction}><ha-icon icon=${prevIcon}></button>
+        <button class="mec-button" ?disabled="${nextDisabled}" @click=${nextAction}><ha-icon icon=${nextIcon}></button>
+        
+      </div>
+      
+      ${renderHeaderStaticFileds(card)}
     </div>
-
-    ${renderHeaderStaticFileds(card)}
-  </div>
-`;
+  `;
+};
 
 const renderHeaderStaticFileds = (card) => x`
     <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
@@ -1576,27 +1609,6 @@ const renderPlayerFullscreen = (card) => x`
     ${[renderHeaderPlayer(card), renderContentPlayer(card)]}
   </div>
 `;
-/*
-const renderPlayerFullscreen = (card) => html`
-  <div id="mec-fullscreen-player-container">
-    <div class="mec-fullscreen-header">
-      <button class="mec-button" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
-      
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
-        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
-      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
-    </div>    
-    <div id="mec-header-info-area" ?hidden="${!card.config.showNavigationInfo}">
-      <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
-      <div class="mec-header-txt-info" ?hidden="${!card.currentItemLink.isRoot}">./</div>
-    </div>
-    <div class="mec-player-content">
-      ${getPlayer(card)}
-    </div>
-  </div>
-`;*/
 
 const renderMenu = (card) => x`
   <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
@@ -1620,13 +1632,16 @@ const renderMenu = (card) => x`
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 const getItemList = (card) => {
+
+  const children = card.config.itemsOrder == 1 ? card.currentItemLink.children : [...card.currentItemLink.children].reverse();
+
   return x`
-    ${c(card.currentItemLink.children,
+    ${c(children,
          (it) => it.mediaContentId,
-         (item, index) => x`
+         (item) => x`
             <div class="mec-browser-content-item" @click=${() => {
                 if (!card.selectionMode) {
-                  card.navigationMap.openChild(index);
+                  card.navigationMap.openChild(item);
                   scrollToTop(card);
                 }
               }}>
@@ -1751,6 +1766,7 @@ class MediaExplorerCard extends i$1 {
       savePreview: true,
       itemSize: "200px",
       masonryMaxHeight: "100%",
+      itemsOrder: 1,
       ...config,
     };
     
@@ -1774,9 +1790,9 @@ class MediaExplorerCard extends i$1 {
 
     if (!this.config.enableCache){
       await CacheManager.clearCache(this.#cacheTableName,this.#cacheMapKey);
-      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath,this.config.enablePreview,this.config.savePreview);
+      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder);
     }
-    else this.navigationMap = new NavigationMap(this._hass,this.#cacheTableName,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview);
+    else this.navigationMap = new NavigationMap(this._hass,this.#cacheTableName,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder);
 
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;

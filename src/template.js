@@ -41,14 +41,14 @@ const renderHeaderBrowser = (card) => html`
 
     <div id="mec-header-browser-buttons">
       <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card); card.selectionMode = false;}}"><ha-icon icon=${backIcon}></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode && card.currentItemLink.children.length == 0}" @click="${(e) => {
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.deleteIntegrationAvailable || (!card.selectionMode && card.currentItemLink.children.length == 0)}" @click="${(e) => {
         if (card.deleteIntegrationAvailable) {
           card.navigationMap.ClearSelectedChildren();
           unselectCheckbox(card);
           card.selectionMode = !card.selectionMode;
         }
-      }}"><ha-icon id="mec-button-icon-selectionMode" ?active="${card.selectionMode}" icon=${!card.deleteIntegrationAvailable ? cancelIcon : card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${() => {
+      }}"><ha-icon id="mec-button-icon-selectionMode" ?active="${card.selectionMode}" icon=${card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.deleteIntegrationAvailable || (!card.selectionMode || card.navigationMap.selectedItems.length == 0)}" @click="${() => {
         if (card.deleteIntegrationAvailable) {
           card.navigationMap.DeleteSelectedChildren();
           card.navigationMap.reloadCurrentItem();
@@ -56,7 +56,7 @@ const renderHeaderBrowser = (card) => html`
           scrollToTop(card);
           unselectCheckbox(card);
         }
-      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+      }}"><ha-icon icon=${trashcanIcon}></button>
       
     </div>
 
@@ -64,25 +64,46 @@ const renderHeaderBrowser = (card) => html`
   </div>
 `;
 
-const renderHeaderPlayer = (card) => html`
-  <div id="mec-header">
+const renderHeaderPlayer = (card) => {
+  
+  const prevDisabled = card.config.itemsOrder == 1
+    ? card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex
+    : card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex
 
-    <div id="mec-header-player-buttons">
-      <button class="mec-button" @click="${() => {
-        if (card.fullScreenPlayerOn) card.fullScreenPlayerOn = false
-        else card.navigationMap.navigateBack();        
-      }}"><ha-icon icon=${closeIcon}></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
-        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
-      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
-      <button class="mec-button" ?hidden=${card.fullScreenPlayerOn} @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
+  const nextDisabled = card.config.itemsOrder == 1
+    ? card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex
+    : card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex
+
+  const prevAction = card.config.itemsOrder == 1
+    ? () => card.navigationMap.openPrevSibling()
+    : () => card.navigationMap.openNextSibling()
+
+  const nextAction = card.config.itemsOrder == 1
+    ? () => card.navigationMap.openNextSibling()
+    : () => card.navigationMap.openPrevSibling()
+
+  return html`
+    <div id="mec-header">
+
+      <div id="mec-header-player-buttons">
+        <button class="mec-button" @click="${() => {
+          if (card.fullScreenPlayerOn) card.fullScreenPlayerOn = false
+          else card.navigationMap.navigateBack();        
+        }}"><ha-icon icon=${closeIcon}></button>
+        <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
+          if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
+        }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+        <button class="mec-button" ?hidden=${card.fullScreenPlayerOn} @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
+        
+        <button class="mec-button" ?disabled="${prevDisabled}" @click=${prevAction}><ha-icon icon=${prevIcon}></button>
+        <button class="mec-button" ?disabled="${nextDisabled}" @click=${nextAction}><ha-icon icon=${nextIcon}></button>
+        
+      </div>
+      
+      ${renderHeaderStaticFileds(card)}
     </div>
-
-    ${renderHeaderStaticFileds(card)}
-  </div>
-`;
+  `;
+}
 
 const renderHeaderStaticFileds = (card) => html`
     <div id="mec-header-title" ?hidden="${!card.config.title}"> ${card.config.title} </div>
@@ -122,27 +143,6 @@ const renderPlayerFullscreen = (card) => html`
     ${[renderHeaderPlayer(card), renderContentPlayer(card)]}
   </div>
 `;
-/*
-const renderPlayerFullscreen = (card) => html`
-  <div id="mec-fullscreen-player-container">
-    <div class="mec-fullscreen-header">
-      <button class="mec-button" @click="${() => card.fullScreenPlayerOn = false}"><ha-icon icon=${closeIcon}></button>
-      
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
-        if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
-      }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex <= card.currentItemLink.parent?.firstFileChildIndex}" @click=${() => card.navigationMap.openPrevSibling()}><ha-icon icon=${prevIcon}></button>
-      <button class="mec-button" ?disabled="${card.currentItemLink.siblingIndex >= card.currentItemLink.parent?.lastFileChildIndex}" @click=${() => card.navigationMap.openNextSibling()}><ha-icon icon=${nextIcon}></button>
-    </div>    
-    <div id="mec-header-info-area" ?hidden="${!card.config.showNavigationInfo}">
-      <div class="mec-header-txt-info" ?hidden="${card.currentItemLink.isRoot}">${card.currentItemLink.mediaContentId.replace(card.config.startPath,".")}</div>
-      <div class="mec-header-txt-info" ?hidden="${!card.currentItemLink.isRoot}">./</div>
-    </div>
-    <div class="mec-player-content">
-      ${getPlayer(card)}
-    </div>
-  </div>
-`;*/
 
 const renderMenu = (card) => html`
   <div class="mec-menu-overlay" @click=${() => card.menuOn = false}></div>
@@ -166,13 +166,16 @@ const renderMenu = (card) => html`
 
 /** @param {import('./card.js').MediaExplorerCard} card */
 const getItemList = (card) => {
+
+  const children = card.config.itemsOrder == 1 ? card.currentItemLink.children : [...card.currentItemLink.children].reverse();
+
   return html`
-    ${repeat(card.currentItemLink.children,
+    ${repeat(children,
          (it) => it.mediaContentId,
-         (item, index) => html`
+         (item) => html`
             <div class="mec-browser-content-item" @click=${() => {
                 if (!card.selectionMode) {
-                  card.navigationMap.openChild(index);
+                  card.navigationMap.openChild(item);
                   scrollToTop(card);
                 }
               }}>

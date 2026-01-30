@@ -5,3 +5,7 @@ To commit a release version follow these steps:
 2. Remove tag "release" with checkbox "Remove tag from all remotes"
 3. Insert a new tag "release" in the last commit WITHOUT the checkbox "Push tag:"
 4. Push with checkbox "Push all tags"
+
+-------
+To install all dependencies: npm install
+To "compile": npm run build
