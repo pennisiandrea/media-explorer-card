@@ -33,7 +33,8 @@ type: custom:media-explorer-card
 startPath: media-source://media_source/home_nas_antifurto/telecamere
 title: Archivio telecamere
 showMenuButton: true
-showDeleteButton: false
+showDeleteButton: true
+showDownloadButton: true
 showNavigationInfo: true
 enableCache: true
 enablePreview: true
@@ -46,19 +47,20 @@ grid_options:
   rows: 7
 ```
 
-| Option             | Type   | Description                                                           | Optional | default value |
-| ------------------ | ------ | ----------------------------------------------------------------------| -------- | ------------- |
-| startPath          | string | Start directory                                                       | false    |               |
-| title              | string | Title of the card                                                     | true     | null          |
-| showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner                          | true     | true          |
-| showDeleteButton   | bool   | Shows the select & delete button (read description below!)            | true     | false         |
-| showNavigationInfo | bool   | Shows the path & file name in the header                              | true     | true          |
-| enableCache        | bool   | Enable the caching system (see description below)                     | true     | true          |
-| enablePreview      | bool   | Enable the thumbnail load of images and videos                        | true     | true          |
-| savePreview        | bool   | Saves the thumbnail in the volatile memory                            | true     | true          |
-| itemSize           | string | Size of the folders/files icons or previews                           | true     | "200px"       |
-| masonryMaxHeight   | string | Max height of the card - useful on masonry view                       | true     | "100%"        |
-| itemsOrder         | numeric| Order of the items based on creation date. 1=ascending 2=descending   | true     | 1             |
+| Option             | Type   | Description                                                                       | Optional | default value |
+| ------------------ | ------ | --------------------------------------------------------------------------------- | -------- | ------------- |
+| startPath          | string | Start directory                                                                   | false    |               |
+| title              | string | Title of the card                                                                 | true     | null          |
+| showMenuButton     | bool   | Shows the 3-dot icon in the top-right corner                                      | true     | true          |
+| showDeleteButton   | bool   | Shows the delete button (read description below!)                                 | true     | false         |
+| showDownloadButton | bool   | Shows the download button (read description below!)                               | true     | true          |
+| showNavigationInfo | bool   | Shows the path & file name in the header                                          | true     | true          |
+| enableCache        | bool   | Enable the caching system (see description below)                                 | true     | true          |
+| enablePreview      | bool   | Enable the thumbnail load of images and videos                                    | true     | true          |
+| savePreview        | bool   | Saves the thumbnail in the volatile memory                                        | true     | true          |
+| itemSize           | string | Size of the folders/files icons or previews                                       | true     | "200px"       |
+| masonryMaxHeight   | string | Max height of the card - useful on masonry view                                   | true     | "100%"        |
+| itemsOrder         | numeric| Order of the items based on creation date. 1=ascending 2=descending               | true     | 1             |
 
 Use grid_options to size the card in your dashboard.
 
@@ -76,10 +78,17 @@ With savePreview option enabled, thumbnails are saved in the volatile memory of 
 ### Delete feature
 **This feature works only if you have installed the custom integration https://github.com/chomupashchuk/delete-file-home-assistant**
 
-With showDeleteButton option enabled, two new buttons become visible.
+With the showDeleteButton option enabled, two new buttons become visible.
 The first one activates the selection mode, allowing the user to select one or more items in the browser. The other deletes all selected items.
 ![Card Screenshot](./screenshots/screenshot_7.png)  
 Be careful, deleted items cannot be recovered.
+
+### Download feature
+
+With the showDownloadButton option enabled, two new buttons become visible.
+The first one activates the selection mode, allowing the user to select one or more items in the browser. The other downloads all selected items.
+The download feature behaves differently according to the current view. If you are displaying the browser view, then all selected files (not folders!) will be packed in a zip archive that will be downloaded by your browser. If you are displaying the player view, the current file will be downloaded and no zip package will be generated. 
+![Card Screenshot](./screenshots/screenshot_8.png)  
 
 
 ## HACS Installation Instructions (recommended)

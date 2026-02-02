@@ -71,6 +71,7 @@ class MediaExplorerCard extends LitElement {
       showMenuButton: true,
       showDeleteButton: true,
       showNavigationInfo: true,
+      showDownloadButton: true,
       enableCache: true,
       enablePreview: true,
       savePreview: true,

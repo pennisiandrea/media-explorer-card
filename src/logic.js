@@ -1,4 +1,6 @@
 import { CacheManager, devLog } from './utils.js';
+import * as JSZip from 'jszip'
+import {saveAs} from 'file-saver'
 
 export class NavigationItem extends EventTarget {
   // Private fields
@@ -320,6 +322,7 @@ export class NavigationMap extends EventTarget {
   hass;
   loading=false;
   selectedItems=[];
+  downloading=false;
 
   // Constructor
   constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview, previewLoadOrder) { 
@@ -531,6 +534,34 @@ export class NavigationMap extends EventTarget {
       console.error("Failed to delete items:", err);
     }   
   }
+  async DownloadSelectedChildren() {
+    this.downloading=true;
+    
+    try {
+      const zip = new JSZip.default();
+      var fileFound = false;
+      
+      for (const item of this.selectedItems) {
+        if (item.isFile) {
+          fileFound = true;
+          const response = await fetch(item.url);
+          const blob = await response.blob();
+          zip.file(item.title, blob);
+        }
+      }
+      
+      if (fileFound) {
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        saveAs(zipBlob, 'media_explorer_card_download.zip');
+      }
+
+    } catch (error) {
+      console.error('Errore:', error);
+    } finally {
+      this.downloading = false;
+      this.ClearSelectedChildren();
+    }
+  }
 
   // Private methods
   async #Init() {
@@ -557,6 +588,7 @@ export class NavigationMap extends EventTarget {
   }
   #openCurrentItem() {
     //devLog("NavigationMap.#openCurrentItem - start");
+    this.ClearSelectedChildren();
     if (this.currentItem.isDirectory) {      
       if(this.#enablePreview) this.#subscribeToCurrentItemEvents();
       this.#sendEventCurrentItemChanged();

@@ -18,6 +18,7 @@ const checkboxIcon = "mdi:checkbox-multiple-outline";
 const checkboxIconMarked = "mdi:checkbox-multiple-marked";
 const trashcanIcon = "mdi:trash-can-outline";
 const cancelIcon = "mdi:cancel";
+const downloadIcon = "mdi:download";
 
 
 /** @param {import('./card.js').MediaExplorerCard} card */
@@ -41,14 +42,12 @@ const renderHeaderBrowser = (card) => html`
 
     <div id="mec-header-browser-buttons">
       <button class="mec-button" ?disabled="${card.currentItemLink.isRoot}" @click="${() => {card.navigationMap.navigateBack(); scrollToTop(card); card.selectionMode = false;}}"><ha-icon icon=${backIcon}></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.deleteIntegrationAvailable || (!card.selectionMode && card.currentItemLink.children.length == 0)}" @click="${(e) => {
-        if (card.deleteIntegrationAvailable) {
-          card.navigationMap.ClearSelectedChildren();
-          unselectCheckbox(card);
-          card.selectionMode = !card.selectionMode;
-        }
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton && !card.config.showDownloadButton} ?disabled="${card.navigationMap.downloading || !card.selectionMode && card.currentItemLink.children.length == 0}" @click="${(e) => {
+        card.navigationMap.ClearSelectedChildren();
+        unselectCheckbox(card);
+        card.selectionMode = !card.selectionMode; 
       }}"><ha-icon id="mec-button-icon-selectionMode" ?active="${card.selectionMode}" icon=${card.selectionMode ? checkboxIconMarked : checkboxIcon }></button>
-      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.deleteIntegrationAvailable || (!card.selectionMode || card.navigationMap.selectedItems.length == 0)}" @click="${() => {
+      <button class="mec-button" ?hidden=${!card.config.showDeleteButton} ?disabled="${!card.deleteIntegrationAvailable || card.navigationMap.downloading || (!card.selectionMode || card.navigationMap.selectedItems.length == 0)}" @click="${() => {
         if (card.deleteIntegrationAvailable) {
           card.navigationMap.DeleteSelectedChildren();
           card.navigationMap.reloadCurrentItem();
@@ -57,7 +56,13 @@ const renderHeaderBrowser = (card) => html`
           unselectCheckbox(card);
         }
       }}"><ha-icon icon=${trashcanIcon}></button>
-      
+      <button class="mec-button" ?hidden=${!card.config.showDownloadButton} ?disabled="${card.navigationMap.downloading || !card.selectionMode || card.navigationMap.selectedItems.length == 0}" @click="${async() => {
+        await card.navigationMap.DownloadSelectedChildren();
+        card.selectionMode = false;      
+        scrollToTop(card);
+        unselectCheckbox(card);        
+      }}"><ha-icon icon=${downloadIcon}></button>
+ 
     </div>
 
     ${renderHeaderStaticFileds(card)}
@@ -93,11 +98,12 @@ const renderHeaderPlayer = (card) => {
         <button class="mec-button" ?hidden=${!card.config.showDeleteButton} @click="${() => {
           if (card.deleteIntegrationAvailable) card.navigationMap.DeleteItem(card.currentItemLink);
         }}"><ha-icon icon=${!card.deleteIntegrationAvailable ? cancelIcon : trashcanIcon}></button>
+        <a ?hidden=${!card.config.showDownloadButton} href="${card.currentItemLink.url}" download="${card.currentItemLink.title}" class="mec-button"><ha-icon icon=${downloadIcon}></a>
         <button class="mec-button" ?hidden=${card.fullScreenPlayerOn} @click=${() => card.fullScreenPlayerOn = true}><ha-icon icon=${zoomIcon}></button>
         
         <button class="mec-button" ?disabled="${prevDisabled}" @click=${prevAction}><ha-icon icon=${prevIcon}></button>
         <button class="mec-button" ?disabled="${nextDisabled}" @click=${nextAction}><ha-icon icon=${nextIcon}></button>
-        
+
       </div>
       
       ${renderHeaderStaticFileds(card)}
@@ -227,3 +233,4 @@ const unselectCheckbox = (card) => {
   const selectedBoxes = card.shadowRoot.querySelectorAll(".mec-browser-content-item-checkbox-input");
   if (selectedBoxes) selectedBoxes.forEach(item => item.checked = false);
 }
+
