@@ -81,6 +81,10 @@ class MediaExplorerCard extends LitElement {
       ...config,
     };
     
+    if (this.config.startPath.endsWith("/")) {
+      this.config.startPath = this.config.startPath.slice(0,-1);
+    }
+    
   }
 
   async #initCard(){

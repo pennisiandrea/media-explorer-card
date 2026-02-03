@@ -1388,9 +1388,20 @@ class NavigationMap extends EventTarget {
           if (this.currentItem.siblingIndex < this.currentItem.parent?.lastFileChildIndex) this.openNextSibling();
           else if (this.currentItem.siblingIndex > this.currentItem.parent?.firstFileChildIndex) this.openPrevSibling(); 
         }
+        
+        var fileToDelete = "";
+
+        if (item.mediaContentId.startsWith("media-source://media_source/local")) {
+          fileToDelete = item.mediaContentId.replace("media-source://media_source/local","/media");
+        }
+        else {
+          if (item.mediaContentId.startsWith("media-source://media_source")) {
+            fileToDelete = item.mediaContentId.replace("media-source://media_source","/media");
+          }
+        }
 
         this.hass.callService("delete", "file", {
-          file: item.mediaContentId.replace("media-source://media_source","/media")
+          file: fileToDelete
         });
         
         if (dummy){
@@ -1863,6 +1874,10 @@ class MediaExplorerCard extends i$1 {
       itemsOrder: 1,
       ...config,
     };
+    
+    if (this.config.startPath.endsWith("/")) {
+      this.config.startPath = this.config.startPath.slice(0,-1);
+    }
     
   }
 

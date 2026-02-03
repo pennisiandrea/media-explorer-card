@@ -24,13 +24,13 @@ Browse folders, preview images, and play videos **directly within your dashboard
 Minimal implementation:
 ```yaml
 type: custom:media-explorer-card
-startPath: media-source://media_source/home_nas_antifurto/telecamere
+startPath: media-source://media_source/local/home_nas_antifurto/telecamere
 ```
 
 Full-options implementation:
 ```yaml
 type: custom:media-explorer-card
-startPath: media-source://media_source/home_nas_antifurto/telecamere
+startPath: media-source://media_source/local/home_nas_antifurto/telecamere
 title: Archivio telecamere
 showMenuButton: true
 showDeleteButton: true
@@ -63,6 +63,25 @@ grid_options:
 | itemsOrder         | numeric| Order of the items based on creation date. 1=ascending 2=descending               | true     | 1             |
 
 Use grid_options to size the card in your dashboard.
+
+### startPath
+startPath is the root directory of your card instance, you will be able to explore only subdirectories. 
+It has to start with **media-source://media_source**, followed by the name of the media directory.
+On homeassistant the default media directory is named **local**, but you might have changed it in the configuration.yaml file.
+If you don't know where to start, try this one:  **media-source://media_source/local**
+
+Here is an example with a customized media directory:
+configuration.yaml
+```yaml
+homeassistant:
+  media_dirs:
+    home_nas_antifurto: '/media/home_nas_antifurto'
+```
+card implementation:
+```yaml
+type: custom:media-explorer-card
+startPath: media-source://media_source/home_nas_antifurto/telecamere
+```
 
 ### Cache
 If enableCache option is enabled, it records a navigation map in the non-volatile memory of the browser. This provides the fastest navigation experience for those folders you have already visited. To erase the saved navigation map you can use the menu button:
