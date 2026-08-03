@@ -76,7 +76,7 @@ export class CacheManager {
         else result = false;
       } catch (err) {
         console.warn("Error reading cache:", err);
-        await this.clearCache(dataKey);
+        await await this.clearCache(tableName,dataKey);
         result = false;
       }
     }
@@ -108,21 +108,33 @@ export class CacheManager {
     return result;
   }
   static async #getDB() {
-    //devLog("CacheManager.#getDB - start");
     let result;
+
     try {
-      while(this.#waitingCreatingTable > 0) {
-        await new Promise(resolve => setTimeout(resolve, 50));
+      while (
+        this.#waitingCreatingTable > 0
+      ) {
+        await new Promise(resolve =>
+          setTimeout(resolve, 50)
+        );
       }
-      
-      this.#dbInstance = await openDB(this.#dbName);
+
+      if (!this.#dbInstance) {
+        this.#dbInstance =
+          await openDB(this.#dbName);
+      }
+
       result = true;
+
     } catch (err) {
-      console.error("Error opening/creating DB:", err);
+      console.error(
+        "Error opening/creating DB:",
+        err
+      );
+
       result = false;
     }
-    
-    //devLog("CacheManager.#getDB - end");
+
     return result;
   }
   // Private methods

@@ -6,7 +6,7 @@ import { renderTemplate} from './template.js';
 
 class MediaExplorerCard extends LitElement {
   // private fields
-  #version = "20251111a";
+  #version = "20260803a";
   #cacheDBName = "MediaExplorerCard";
   #cacheTableName = "";
   #cacheMapKey = "map";
@@ -14,6 +14,7 @@ class MediaExplorerCard extends LitElement {
   #initDone = false;
   #initStarted = false;
   #masonryView = false;
+  #previewRenderScheduled = false;
 
   // public fields
   /** @type {NavigationMap} */
@@ -78,6 +79,7 @@ class MediaExplorerCard extends LitElement {
       itemSize: "200px",
       masonryMaxHeight: "100%",
       itemsOrder: 1,
+      cacheMaxAge: 30000,
       ...config,
     };
     
@@ -105,9 +107,9 @@ class MediaExplorerCard extends LitElement {
 
     if (!this.config.enableCache){
       await CacheManager.clearCache(this.#cacheTableName,this.#cacheMapKey);
-      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder);
+      this.navigationMap = new NavigationMap(this._hass,null,null,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder, this.config.cacheMaxAge);
     }
-    else this.navigationMap = new NavigationMap(this._hass,this.#cacheTableName,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder);
+    else this.navigationMap = new NavigationMap(this._hass,this.#cacheTableName,this.#cacheMapKey,this.config.startPath,this.config.enablePreview,this.config.savePreview, this.config.itemsOrder, this.config.cacheMaxAge);
 
     this.navigationMap.addEventListener("currentItemChanged", (e) => {
       this.currentItemLink = e.detail;
@@ -115,9 +117,19 @@ class MediaExplorerCard extends LitElement {
       if (this.browserMode) this.fullScreenPlayerOn = false;
       this.currentItemForceLitUpdate++; 
     });
-    this.navigationMap.addEventListener("currentItemChildrenPreviewChanged", (e) => {
-      this.previewImageForceLitUpdate++;
-    });
+    this.navigationMap.addEventListener(
+      "currentItemChildrenPreviewChanged",
+      () => {
+        if (this.#previewRenderScheduled) return;
+
+        this.#previewRenderScheduled = true;
+
+        requestAnimationFrame(() => {
+          this.#previewRenderScheduled = false;
+          this.previewImageForceLitUpdate++;
+        });
+      }
+    );
     this.currentItemLink = this.navigationMap.currentItem;
     this.#initDone = true;
     //devLog("InitCard - end");

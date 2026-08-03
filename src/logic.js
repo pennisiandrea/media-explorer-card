@@ -11,7 +11,9 @@ export class NavigationItem extends EventTarget {
   #lastUpdateDT = null;
   #previewImage = null;
   #enablePreview = null;
-  loadChildrenPreview = null;
+  #previewRunId = 0;
+  #previewLoading = false;
+  loadChildrenPreview = false;
 
   // Public fields
   /** @type {Array< NavigationItem >} */
@@ -55,6 +57,7 @@ export class NavigationItem extends EventTarget {
   get isRoot() {return this.parent == null}
   get previewImage() { return this.#previewImage; }
   get enablePreview() { return this.#enablePreview; }
+  get previewLoading() { return this.#previewLoading; }
   get siblingIndex() {
     if (!this.parent) return 0;
     return this.parent.children.indexOf(this);
@@ -116,45 +119,91 @@ export class NavigationItem extends EventTarget {
   }
 
   async loadChildren(previewLoadOrder = 1) {
-    //devLog("NavigationItem.loadChildren - start");
-    /*  returnVal
-    0 = nothing changed
-    1 = something changed
-    99 = error      
+    /*
+      returnVal:
+      0 = nothing changed
+      1 = something changed
+      99 = error
     */
+
     let returnVal = 0;
+
     try {
-      const { children: updatedChildren = []} = await this.hass.callWS({ 
-          type: "media_source/browse_media", 
-          media_content_id: this.#mediaContentId 
-      }) ?? {};  
-      
-      const currentChildrenMap = new Map(this.children.map(item => [item.mediaContentId, item]));
-      const updatedChildrenContentIDs = updatedChildren.map(item => item.media_content_id);
+      const { children: updatedChildren = [] } =
+        await this.hass.callWS({
+          type: "media_source/browse_media",
+          media_content_id: this.#mediaContentId
+        }) ?? {};
 
-      // Removed elements
-      if (this.children.some(item => !updatedChildrenContentIDs.includes(item.mediaContentId))) returnVal = 1;
+      const currentChildrenMap = new Map(
+        this.children.map(item => [
+          item.mediaContentId,
+          item
+        ])
+      );
 
-      // Rebuild children
+      const updatedChildrenContentIDs = new Set(
+        updatedChildren.map(item => item.media_content_id)
+      );
+
+      // Controlla se qualche elemento precedente è stato rimosso.
+      if (
+        this.children.some(
+          item => !updatedChildrenContentIDs.has(item.mediaContentId)
+        )
+      ) {
+        returnVal = 1;
+      }
+
+      // Ricostruisce l'elenco riutilizzando gli oggetti già esistenti.
       const newChildren = updatedChildren.map(item => {
-        const existing = currentChildrenMap.get(item.media_content_id);
-        if (!existing ||
-            existing.title !== item.title ||
-            existing.mediaClass !== item.media_class) {
-              returnVal = 1;
-              return new NavigationItem(this.hass,this,item.title,item.media_class,item.media_content_id,null,null,this.enablePreview);
-            }
-        return existing;       
+        const existing =
+          currentChildrenMap.get(item.media_content_id);
+
+        if (
+          !existing ||
+          existing.title !== item.title ||
+          existing.mediaClass !== item.media_class
+        ) {
+          returnVal = 1;
+
+          return new NavigationItem(
+            this.hass,
+            this,
+            item.title,
+            item.media_class,
+            item.media_content_id,
+            null,
+            null,
+            this.enablePreview
+          );
+        }
+
+        return existing;
       });
-      /*
-      const sameOrder = this.children.length === newChildren.length &&
-                        this.children.every((child, idx) => child.mediaContentId === newChildren[idx].mediaContentId);
-      if (!sameOrder) returnVal = 1;
-      */
+
+      // Rileva anche un semplice cambiamento di ordinamento.
+      const sameOrder =
+        this.children.length === newChildren.length &&
+        this.children.every(
+          (child, index) =>
+            child.mediaContentId ===
+            newChildren[index].mediaContentId
+        );
+
+      if (!sameOrder) {
+        returnVal = 1;
+      }
 
       this.children = newChildren;
 
-      if (this.#enablePreview) this.#loadChildrenPreviewImage(previewLoadOrder);
+      // Le anteprime partono in background:
+      // loadChildren non aspetta che siano completate.
+      if (this.#enablePreview) {
+        void this.#loadChildrenPreviewImage(
+          previewLoadOrder
+        );
+      }
 
       this.#lastUpdateDT = Date.now();
 
@@ -162,8 +211,7 @@ export class NavigationItem extends EventTarget {
       console.error("Failed to load children:", err);
       returnVal = 99;
     }
-    
-    //devLog("NavigationItem.loadChildren - end");
+
     return returnVal;
   }
 
@@ -172,124 +220,263 @@ export class NavigationItem extends EventTarget {
     for (const child of this.children) child.clearURL();
   }
 
-  async #loadChildrenPreviewImage(order = 1, concurrency = 8) {
-    //devLog("NavigationItem.#loadChildrenPreviewImage - start");
+  startPreviewLoading(order = 1) {
+    if (this.#enablePreview) {
+      void this.#loadChildrenPreviewImage(order);
+    }
+  }
+
+  async #loadChildrenPreviewImage(order = 1,concurrency = 3) {
+    const runId = ++this.#previewRunId;
 
     this.loadChildrenPreview = true;
 
-    const queue = [];
+    const source =
+      order === 1
+        ? this.children
+        : [...this.children].reverse();
+
+    const queue = source.filter(child =>
+      !child.previewImage &&
+      !child.previewLoading &&
+      (child.isVideo || child.isImage)
+    );
+
     let active = 0;
 
-    const runTask = async (child) => {
-      try {
-        active++;
-        await child.getPreviewImage();
-        this.#sendEventItemPreviewReady();
-      } finally {
-        active--;
-        next();
-      }
-    };
+    const isCurrentRun = () =>
+      this.loadChildrenPreview &&
+      runId === this.#previewRunId;
 
-    const next = () => {
-      if (!this.loadChildrenPreview) return;
-      if (active >= concurrency) return;
-      const child = queue.shift();
-      if (child) runTask(child);
-    };
+    await new Promise(resolve => {
+      const next = () => {
+        if (!isCurrentRun()) {
+          if (active === 0) {
+            resolve();
+          }
 
-    if (order == 1) {
-      for (const child of this.children) {
-        if (!child.previewImage && (child.isVideo || child.isImage)) {
-          queue.push(child);
+          return;
         }
-      }
-    }
-    else {
-      for (let i = this.children.length - 1; i >= 0; i--) {
-        const child = this.children[i];
-        if (!child.previewImage && (child.isVideo || child.isImage)) {
-          queue.push(child);
+
+        while (
+          active < concurrency &&
+          queue.length > 0
+        ) {
+          const child = queue.shift();
+
+          if (
+            !child ||
+            child.previewImage ||
+            child.previewLoading
+          ) {
+            continue;
+          }
+
+          active++;
+
+          child.getPreviewImage()
+            .then(changed => {
+              if (changed) {
+                this.#sendEventItemPreviewReady();
+              }
+            })
+            .finally(() => {
+              active--;
+
+              if (
+                queue.length === 0 &&
+                active === 0
+              ) {
+                resolve();
+              }
+              else {
+                next();
+              }
+            });
         }
-      }
+
+        if (
+          queue.length === 0 &&
+          active === 0
+        ) {
+          resolve();
+        }
+      };
+
+      next();
+    });
+
+    if (runId === this.#previewRunId) {
+      this.loadChildrenPreview = false;
     }
-
-    for (let i = 0; i < concurrency; i++) next();
-
-    while ((queue.length > 0 || active > 0) && this.loadChildrenPreview) {
-      await new Promise(r => setTimeout(r, 100));
-    }
-
-    this.loadChildrenPreview = false;
-    //devLog("NavigationItem.#loadChildrenPreviewImage - end");
   }
 
   stopOperations() {
     this.loadChildrenPreview = false;
+    this.#previewRunId++;
   }
 
   async getPreviewImage() {
-    //devLog("NavigationItem.getPreviewImage - start");
-    if (!this.isImage && !this.isVideo) {
-      this.#previewImage = null;
+    if (
+      (!this.isImage && !this.isVideo) ||
+      this.#previewImage ||
+      this.#previewLoading
+    ) {
+      return false;
     }
-    else {
-      try {
-        await this.getURL();
-        if (!this.#url) return;
-        
-        const maxSize = 250;
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        
-        if (this.isImage) {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.src = this.#url;
-          await img.decode();
 
-          const scale = Math.min(maxSize / img.width, maxSize / img.height);
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
+    this.#previewLoading = true;
 
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        }
-        else if (this.isVideo) {
-          const video = document.createElement("video");
-          video.crossOrigin = "anonymous";
-          video.src = this.#url;
-          video.muted = true;
-          video.playsInline = true;
+    let video = null;
 
-          await new Promise((resolve, reject) => {
-            video.addEventListener("loadeddata", resolve, { once: true });
-            video.addEventListener("error", reject, { once: true });
-          });
+    try {
+      await this.getURL();
 
-          video.currentTime = Math.min(1, video.duration / 2);
-          
-          await new Promise((resolve, reject) => {
-            video.addEventListener("seeked", resolve, { once: true });
-            video.addEventListener("error", reject, { once: true });
-          });
-          
-          const scale = Math.min(maxSize / video.videoWidth, maxSize / video.videoHeight);
-          canvas.width = video.videoWidth * scale;
-          canvas.height = video.videoHeight * scale;
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        };
-
-        this.#previewImage = canvas.toDataURL("image/jpeg", 1);
-
-      } catch (err) {
-        console.warn("Preview generation failed:", err);
-        
-        this.#previewImage = null;
+      if (!this.#url) {
+        return false;
       }
-    }
 
-    //devLog("NavigationItem.getPreviewImage - end");
-    return;
+      const maxSize = 200;
+
+      const canvas =
+        document.createElement("canvas");
+
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        return false;
+      }
+
+      if (this.isImage) {
+        const img = new Image();
+
+        img.crossOrigin = "anonymous";
+        img.src = this.#url;
+
+        await img.decode();
+
+        const scale = Math.min(
+          maxSize / img.width,
+          maxSize / img.height,
+          1
+        );
+
+        canvas.width = Math.max(
+          1,
+          Math.round(img.width * scale)
+        );
+
+        canvas.height = Math.max(
+          1,
+          Math.round(img.height * scale)
+        );
+
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+      }
+      else {
+        video = document.createElement("video");
+
+        video.crossOrigin = "anonymous";
+        video.src = this.#url;
+        video.muted = true;
+        video.playsInline = true;
+
+        await new Promise((resolve, reject) => {
+          video.addEventListener(
+            "loadeddata",
+            resolve,
+            { once: true }
+          );
+
+          video.addEventListener(
+            "error",
+            reject,
+            { once: true }
+          );
+        });
+
+        const targetTime =
+          Number.isFinite(video.duration) &&
+          video.duration > 0
+            ? Math.min(1, video.duration / 2)
+            : 0;
+
+        if (targetTime > 0) {
+          video.currentTime = targetTime;
+
+          await new Promise((resolve, reject) => {
+            video.addEventListener(
+              "seeked",
+              resolve,
+              { once: true }
+            );
+
+            video.addEventListener(
+              "error",
+              reject,
+              { once: true }
+            );
+          });
+        }
+
+        const scale = Math.min(
+          maxSize / video.videoWidth,
+          maxSize / video.videoHeight,
+          1
+        );
+
+        canvas.width = Math.max(
+          1,
+          Math.round(video.videoWidth * scale)
+        );
+
+        canvas.height = Math.max(
+          1,
+          Math.round(video.videoHeight * scale)
+        );
+
+        ctx.drawImage(
+          video,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+      }
+
+      this.#previewImage =
+        canvas.toDataURL(
+          "image/jpeg",
+          0.72
+        );
+
+      return true;
+
+    } catch (err) {
+      console.warn(
+        "Preview generation failed:",
+        err
+      );
+
+      this.#previewImage = null;
+
+      return false;
+
+    } finally {
+      if (video) {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
+
+      this.#previewLoading = false;
+    }
   }
 
   #sendEventItemPreviewReady(){
@@ -313,6 +500,11 @@ export class NavigationMap extends EventTarget {
   #enablePreview = null;
   #savePreview = null;
   #previewLoadOrder = 1;
+  #cacheMaxAge = 30000;
+  #directoryLoadId = 0;
+  #previewEventItem = null;
+  #previewEventHandler =
+    () => this.#sendEventCurrentItemChildrenPreviewChanged();
 
   // Public fields
   /** @type {NavigationItem} */
@@ -325,7 +517,7 @@ export class NavigationMap extends EventTarget {
   downloading=false;
 
   // Constructor
-  constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview, previewLoadOrder) { 
+  constructor(hass, cacheTable, cacheKey, startPath, enablePreview, savePreview, previewLoadOrder,cacheMaxAge = 30000) { 
     super();
     
     this.hass = hass;
@@ -335,6 +527,7 @@ export class NavigationMap extends EventTarget {
     this.#enablePreview = enablePreview;
     this.#savePreview = savePreview;
     this.#previewLoadOrder = previewLoadOrder;
+    this.#cacheMaxAge = cacheMaxAge;
 
     this.#Init();
   }
@@ -344,52 +537,74 @@ export class NavigationMap extends EventTarget {
 
   // Instance methods
   navigateBackToRoot() {
-    //devLog("NavigationMap.navigateBackToRoot - start");
-    if (this.#initDone) {
-      if (!this.loading) {
-        this.currentItem.stopOperations();
-        if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
-        this.currentItem = this.rootItem;
-        this.#openCurrentItem(); 
-      }
+    if (
+      !this.#initDone ||
+      this.currentItem === this.rootItem
+    ) {
+      return;
     }
-    //devLog("NavigationMap.navigateBackToRoot - end");
+
+    this.currentItem.stopOperations();
+
+    if (
+      this.#enablePreview &&
+      !this.#savePreview
+    ) {
+      this.#resetCurrentItemChildrenPreviewImages();
+    }
+
+    this.currentItem = this.rootItem;
+    this.#openCurrentItem();
   }
   navigateBack() {
-    //devLog("NavigationMap.navigateBack - start");
-    if (this.#initDone) {
-      if (!this.loading) {
-        this.currentItem.stopOperations();
-        if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
-        this.currentItem = this.currentItem.parent;
-        this.#openCurrentItem(); 
-      }
+    if (
+      !this.#initDone ||
+      this.currentItem.isRoot
+    ) {
+      return;
     }
-    //devLog("NavigationMap.navigateBack - end");
+
+    this.currentItem.stopOperations();
+
+    if (
+      this.#enablePreview &&
+      !this.#savePreview
+    ) {
+      this.#resetCurrentItemChildrenPreviewImages();
+    }
+
+    this.currentItem =
+      this.currentItem.parent;
+
+    this.#openCurrentItem();
   }
   reloadCurrentItem() {
-    //devLog("NavigationMap.reloadCurrentItem - start");
-    if (this.#initDone) {
-      if (!this.loading) {
-        this.currentItem.stopOperations();
-        if(this.#enablePreview && !this.#savePreview) this.#resetCurrentItemChildrenPreviewImages();
-        this.#openCurrentItem(); 
-      }
+    if (!this.#initDone) {
+      return;
     }
-    //devLog("NavigationMap.reloadCurrentItem - end");
+
+    this.currentItem.stopOperations();
+
+    if (
+      this.#enablePreview &&
+      !this.#savePreview
+    ) {
+      this.#resetCurrentItemChildrenPreviewImages();
+    }
+
+    this.#openCurrentItem(true);
   }
   openChild(child) {
-    //devLog("NavigationMap.openChild - start");
-    if (this.#initDone) {
-      if (!this.loading) {
-        if (child) {
-          this.currentItem.stopOperations();
-          this.currentItem = child;      
-          this.#openCurrentItem();
-        }
-      }
+    if (
+      !this.#initDone ||
+      !child
+    ) {
+      return;
     }
-    //devLog("NavigationMap.openChild - end");
+
+    this.currentItem.stopOperations();
+    this.currentItem = child;
+    this.#openCurrentItem();
   }
   openNextSibling() {
     //devLog("NavigationMap.openNextSibling - start");
@@ -459,7 +674,7 @@ export class NavigationMap extends EventTarget {
       this.currentItem.stopOperations();
       this.currentItem = this.rootItem;
       this.rootItem.children = [];
-      this.#openCurrentItem();
+      this.#openCurrentItem(true);
     }
     //devLog("NavigationMap.clearMemory - end");
   }
@@ -591,45 +806,147 @@ export class NavigationMap extends EventTarget {
     this.#initDone = true;
     //devLog("NavigationMap.#Init - end");
   }
-  #subscribeToCurrentItemEvents(){
-    //itemPreviewReady
-    this.currentItem.addEventListener("itemPreviewReady", () => {
-      this.#sendEventCurrentItemChildrenPreviewChanged();
-    });
+  #unsubscribeFromPreviewEvents() {
+    if (!this.#previewEventItem) {
+      return;
+    }
+
+    this.#previewEventItem.removeEventListener(
+      "itemPreviewReady",
+      this.#previewEventHandler
+    );
+
+    this.#previewEventItem = null;
   }
-  #openCurrentItem() {
-    //devLog("NavigationMap.#openCurrentItem - start");
+  #subscribeToCurrentItemEvents() {
+    this.#unsubscribeFromPreviewEvents();
+
+    this.#previewEventItem =
+      this.currentItem;
+
+    this.#previewEventItem.addEventListener(
+      "itemPreviewReady",
+      this.#previewEventHandler
+    );
+  }
+  #openCurrentItem(forceRefresh = false) {
+    // Invalida eventuali richieste appartenenti
+    // alla schermata precedente.
+    this.#directoryLoadId++;
+
+    this.#unsubscribeFromPreviewEvents();
     this.ClearSelectedChildren();
-    if (this.currentItem.isDirectory) {      
-      if(this.#enablePreview) this.#subscribeToCurrentItemEvents();
+
+    if (this.currentItem.isDirectory) {
+      if (this.#enablePreview) {
+        this.#subscribeToCurrentItemEvents();
+      }
+
+      // La cartella può essere subito mostrata
+      // con gli elementi già presenti in memoria.
+      this.loading = false;
       this.#sendEventCurrentItemChanged();
-      this.#loadCurrentItemChildren();  
-    }    
+
+      const cacheIsFresh =
+        this.currentItem.lastUpdateDT !== null &&
+        Date.now() -
+          this.currentItem.lastUpdateDT <
+          this.#cacheMaxAge;
+
+      if (
+        forceRefresh ||
+        !cacheIsFresh
+      ) {
+        this.#loadCurrentItemChildren();
+      }
+      else {
+        // La directory è ancora valida:
+        // riprende solo le anteprime mancanti.
+        this.currentItem.startPreviewLoading(
+          this.#previewLoadOrder
+        );
+      }
+    }
     else {
-      this.currentItem.getURL().then((returnVal) => {
-        if (returnVal == 1) this.#sendEventCurrentItemChanged();
-        if (returnVal == 99) this.navigateBack();
+      const item = this.currentItem;
+
+      this.loading = true;
+      this.#sendEventCurrentItemChanged();
+
+      item.getURL().then(returnVal => {
+        // Nel frattempo è stato aperto
+        // un altro elemento.
+        if (this.currentItem !== item) {
+          return;
+        }
+
+        this.loading = false;
+
+        if (returnVal === 99) {
+          this.navigateBack();
+          return;
+        }
+
+        this.#sendEventCurrentItemChanged();
       });
     }
-    //devLog("NavigationMap.#openCurrentItem - end");
   }
   #saveMapOnCache() {
     if (this.#cacheTable) CacheManager.saveOnCache(this.#cacheTable,this.#cacheKey, this.rootItem.toJSON());
   }
   #loadCurrentItemChildren() {
-    //devLog("NavigationMap.#loadCurrentItemChildren - start");
-    this.loading = true;
-    this.currentItem.loadChildren(this.#previewLoadOrder).then(returnVal => {
-      this.loading = false;
-      if(returnVal == 1) {
-        this.#sendEventCurrentItemChanged();
+    const item = this.currentItem;
+
+    const requestId =
+      ++this.#directoryLoadId;
+
+    const hasCachedState =
+      item.lastUpdateDT !== null;
+
+    /*
+      Una directory già presente in memoria
+      resta navigabile mentre viene aggiornata.
+      Loading viene mostrato solamente al primo
+      caricamento.
+    */
+    this.loading = !hasCachedState;
+
+    item.loadChildren(
+      this.#previewLoadOrder
+    ).then(returnVal => {
+      /*
+        Salva comunque lastUpdateDT e la nuova
+        struttura se il caricamento è riuscito.
+      */
+      if (returnVal !== 99) {
         this.#saveMapOnCache();
       }
-      else if(returnVal == 99) {
-        this.navigateBack();
+
+      /*
+        La risposta appartiene a una directory
+        che l'utente ha già lasciato.
+      */
+      if (
+        requestId !== this.#directoryLoadId ||
+        this.currentItem !== item
+      ) {
+        return;
       }
+
+      this.loading = false;
+
+      if (returnVal === 99) {
+        this.navigateBack();
+        return;
+      }
+
+      /*
+        Aggiorna sempre l'interfaccia, anche se
+        la cartella è vuota o il contenuto non
+        è cambiato.
+      */
+      this.#sendEventCurrentItemChanged();
     });
-    //devLog("NavigationMap.#loadCurrentItemChildren - end");
   }
   #resetCurrentItemChildrenPreviewImages() {
     for(const child of this.currentItem.children) child.resetPreviewImage();
